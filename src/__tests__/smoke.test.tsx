@@ -5,6 +5,6 @@ import App from '../App';
 describe('App smoke test', () => {
   it('renders application title', () => {
     render(<App />);
-    expect(screen.getByText('DualSenseColour PC')).toBeInTheDocument();
+    expect(screen.getByText('SenseHue')).toBeInTheDocument();
   });
 });

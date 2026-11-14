@@ -1,17 +1,17 @@
 [package]
-name = "dualsensecolour-pc"
-version = "1.0.0"
-description = "Controla el color de la barra de luz de tu mando PS5 DualSense en PC de forma rápida, elegante y sin complicaciones."
+name = "sensehue"
+version = "2.0.0"
+description = "SenseHue — DualSense & DualSense Edge RGB Lighting, Battery Telemetry, Dynamic Effects & Diagnostics Suite."
 authors = ["Ignacio Breñas"]
 license = "MIT"
 edition = "2021"
 
 [lib]
-name = "dualsensecolour_pc_lib"
+name = "sensehue_lib"
 crate-type = ["rlib"]
 
 [[bin]]
-name = "dualsensecolour-pc"
+name = "sensehue"
 path = "src/main.rs"
 test = false
 

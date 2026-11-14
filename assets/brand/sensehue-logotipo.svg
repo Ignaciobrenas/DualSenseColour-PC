@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 180" width="660" height="180">
+  <defs>
+    <linearGradient id="cardBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#12151E"/>
+      <stop offset="100%" stop-color="#07080C"/>
+    </linearGradient>
+    <linearGradient id="hueGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00E5FF"/>
+      <stop offset="50%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#A855F7"/>
+    </linearGradient>
+    <filter id="miniGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Contenedor oscuro elegante compatible con tema claro y oscuro de GitHub -->
+  <rect width="660" height="180" rx="28" fill="url(#cardBg)"/>
+  <rect x="1" y="1" width="658" height="178" rx="27" fill="none" stroke="#FFFFFF" stroke-opacity="0.1" stroke-width="1.5"/>
+
+  <!-- Isotipo integrado a la izquierda -->
+  <g transform="translate(36, 26) scale(0.25)">
+    <rect width="512" height="512" rx="114" fill="#0B0D14" stroke="#2B3345" stroke-width="4"/>
+    <path d="M 140 156 L 372 156 L 340 310 C 337 323 326 332 312 332 L 200 332 C 186 332 175 323 172 310 Z"
+          fill="#171B26" stroke="#333C52" stroke-width="3"/>
+    <g filter="url(#miniGlow)" fill="none" stroke-linecap="round">
+      <path d="M 122 152 L 158 316 Q 164 344 196 348" stroke="url(#hueGrad)" stroke-width="20"/>
+      <path d="M 390 152 L 354 316 Q 348 344 316 348" stroke="url(#hueGrad)" stroke-width="20"/>
+      <line x1="224" y1="366" x2="288" y2="366" stroke="url(#hueGrad)" stroke-width="12"/>
+    </g>
+  </g>
+
+  <!-- Tipografía Wordmark -->
+  <text x="194" y="100" font-family="'Space Grotesk', 'Inter', 'Segoe UI', system-ui, sans-serif"
+        font-size="66" font-weight="800" letter-spacing="-1.5" fill="#F8FAFC">
+    Sense<tspan fill="url(#hueGrad)">Hue</tspan>
+  </text>
+
+  <text x="197" y="132" font-family="'JetBrains Mono', 'Inter', system-ui, sans-serif"
+        font-size="13.5" font-weight="600" letter-spacing="4.2" fill="#7C879E">
+    DUALSENSE LIGHTING &amp; TELEMETRY
+  </text>
+</svg>

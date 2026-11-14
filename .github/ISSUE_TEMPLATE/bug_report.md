@@ -1,6 +1,6 @@
 ---
 name: Reporte de Bug
-about: Informa de un problema con DualSenseColour PC
+about: Informa de un problema con SenseHue
 title: "[BUG] "
 labels: bug
 assignees: ""

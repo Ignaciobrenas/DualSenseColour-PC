@@ -63,7 +63,7 @@ export function TermsModal({
         </div>
 
         <div className="relative flex-1 space-y-2 overflow-y-auto rounded-xl border border-white/[0.09] bg-white/[0.03] p-2.5 text-[11px] leading-relaxed text-slate-200/90 backdrop-blur-md">
-          <p className="font-semibold text-white">DualSenseColour PC v1.0.0 — Licencia MIT</p>
+          <p className="font-semibold text-white">SenseHue v2.0.0 — Licencia MIT</p>
           <p>
             <strong>1. Uso bajo licencia libre:</strong> Esta aplicación se ofrece gratuitamente y
             «tal cual» («AS IS») bajo licencia MIT, sin garantías implícitas.

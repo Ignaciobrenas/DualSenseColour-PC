@@ -94,12 +94,12 @@ pub fn run() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "dualsensecolour_pc=info".into()),
+                .unwrap_or_else(|_| "sensehue=info".into()),
         )
         .init();
 
     let config_path = config::AppConfig::default_config_path()
-        .unwrap_or_else(|_| std::env::temp_dir().join("dualsensecolour-config.json"));
+        .unwrap_or_else(|_| std::env::temp_dir().join("sensehue-config.json"));
     let initial_config = config::AppConfig::load_from_path(&config_path).unwrap_or_default();
     let app_state = commands::AppState::new(initial_config, config_path);
 
@@ -161,7 +161,7 @@ pub fn run() {
             commands::get_presets,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running DualSenseColour PC");
+        .expect("error while running SenseHue");
 }
 
 #[cfg(test)]

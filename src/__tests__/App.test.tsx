@@ -6,7 +6,7 @@ describe('App integration', () => {
   it('syncs preset clicks, custom HEX edits, and LED power-off with DualSensePreview', () => {
     render(<App />);
 
-    expect(screen.getByText('DualSenseColour PC')).toBeInTheDocument();
+    expect(screen.getByText('SenseHue')).toBeInTheDocument();
     expect(screen.getByTestId('connection-badge')).toHaveTextContent('Sin mando');
 
     // Selecting Cyber Cyan updates live DualSense preview to #00F0FF

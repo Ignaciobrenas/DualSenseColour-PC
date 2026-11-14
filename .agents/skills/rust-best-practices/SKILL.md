@@ -5,7 +5,7 @@ description: >-
   error handling with thiserror, and deadlock-free async monitoring with tokio.
 ---
 
-# Rust Best Practices (DualSenseColour PC)
+# Rust Best Practices (SenseHue)
 
 1. **Trait Abstraction for Hardware (`HidTransport`):**
    - Isolate `hidapi` behind a `Send + Sync` trait (`HidTransport`) so protocol encoding, hotplug state transitions, and error recovery are 100% testable in CI without physical DualSense hardware.
