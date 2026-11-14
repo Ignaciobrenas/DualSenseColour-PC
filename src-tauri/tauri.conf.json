@@ -30,12 +30,22 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "shortDescription": "Customize PS5 DualSense RGB lightbar, player LEDs, and mic indicator.",
+    "category": "Utility",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "linux": {
+      "deb": {
+        "depends": ["libhidapi-hidraw0", "libayatana-appindicator3-1"]
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    }
   }
 }
