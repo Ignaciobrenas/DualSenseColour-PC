@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=SenseHue
+Comment=DualSense Lighting & Telemetry Suite
+Exec=sensehue
+Icon=sensehue
+Terminal=false
+Categories=Utility;Game;HardwareSettings;
+StartupNotify=true
+Keywords=DualSense;PS5;Controller;RGB;LED;PlayStation;

@@ -1,6 +1,6 @@
-# Sony PlayStation 5 DualSense & DualSense Edge HID access rules for DualSenseColour PC
+# Sony PlayStation 5 DualSense & DualSense Edge HID access rules for SenseHue
 # Allows non-root desktop users (including Ubuntu Wayland and SteamOS Deck) to customize
-# the RGB lightbar, player LEDs, and microphone indicator over both USB-C and Bluetooth.
+# the RGB lightbar, player LEDs, telemetry, and microphone indicator over both USB-C and Bluetooth.
 
 # DualSense (CFI-ZCT1W) - USB & hidraw
 SUBSYSTEM=="usb", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ce6", MODE="0660", TAG+="uaccess"

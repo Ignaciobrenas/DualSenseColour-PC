@@ -1,6 +1,7 @@
 # Plan files (local only - NEVER commit)
 Plan.md
 PROJECT_PLAN.md
+ROADMAP_SENSEHUE_V2.md
 
 # Dependencies & build outputs
 node_modules/

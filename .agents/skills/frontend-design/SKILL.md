@@ -5,7 +5,7 @@ description: >-
   depth, WCAG contrast on translucent surfaces, and tactile micro-interactions.
 ---
 
-# Frontend Design Principles (DualSenseColour PC)
+# Frontend Design Principles (SenseHue)
 
 1. **Spatial Hierarchy & Framing:**
    - Compact frameless desktop canvas (`~440x680px`), rounded outer shell (`border-radius: 22px`), crisp 1px specular rim (`rgba(255, 255, 255, 0.14)`).

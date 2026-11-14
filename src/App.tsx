@@ -7,7 +7,7 @@ import { TitleBar } from './components/TitleBar';
 import { useController } from './hooks/useController';
 import { rgbToHex } from './types/controller';
 
-const TERMS_STORAGE_KEY = 'dualsensecolour_terms_accepted_v1';
+const TERMS_STORAGE_KEY = 'sensehue_terms_accepted_v2';
 
 function shouldOpenTermsOnLaunch(): boolean {
   if (typeof window === 'undefined' || !('__TAURI_INTERNALS__' in window)) {

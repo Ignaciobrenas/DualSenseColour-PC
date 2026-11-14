@@ -9,7 +9,7 @@ use crate::hid::color::PRESETS;
 use crate::hid::monitor::ConnectionStatus;
 use crate::hid::transport::TransportType;
 
-pub const TRAY_ID: &str = "dualsensecolour-tray";
+pub const TRAY_ID: &str = "sensehue-tray";
 pub const MENU_ID_STATUS: &str = "status";
 pub const MENU_ID_COLOR_SUMMARY: &str = "color-summary";
 pub const MENU_ID_TOGGLE_WINDOW: &str = "toggle-window";
@@ -108,7 +108,7 @@ pub fn format_tray_tooltip(status: &ConnectionStatus, config: &AppConfig) -> Str
     let status_text = format_tray_status(status);
     let hex = config.color.to_hex();
     format!(
-        "DualSenseColour PC\n{status_text}\nLuz: {hex} ({}%)",
+        "SenseHue\n{status_text}\nLuz: {hex} ({}%)",
         config.brightness
     )
 }
@@ -397,7 +397,7 @@ where
     let toggle_item = MenuItem::with_id(
         app,
         MENU_ID_TOGGLE_WINDOW,
-        "Abrir / Ocultar DualSenseColour PC",
+        "Abrir / Ocultar SenseHue",
         true,
         None::<&str>,
     )?;
@@ -487,13 +487,7 @@ where
     )?;
 
     let sep_exit = PredefinedMenuItem::separator(app)?;
-    let quit_item = MenuItem::with_id(
-        app,
-        MENU_ID_QUIT,
-        "Salir de DualSenseColour PC",
-        true,
-        None::<&str>,
-    )?;
+    let quit_item = MenuItem::with_id(app, MENU_ID_QUIT, "Salir de SenseHue", true, None::<&str>)?;
 
     let mut menu_refs: Vec<&dyn tauri::menu::IsMenuItem<Wry>> = vec![
         &status_item,

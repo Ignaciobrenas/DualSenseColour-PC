@@ -1,28 +1,26 @@
 <p align="center">
-  <img src="docs/screenshots/brand-banner.svg" alt="DualSenseColour PC Banner" width="100%" />
+  <img src="assets/brand/sensehue-logotipo.svg" alt="SenseHue — DualSense Lighting & Telemetry" width="660" />
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ignaciobrenas/DualSenseColour-PC/releases">
-    <img src="https://img.shields.io/badge/release-v1.0.0-00439C?style=for-the-badge" alt="Release v1.0.0" />
+  <a href="https://github.com/Ignaciobrenas/SenseHue/releases">
+    <img src="https://img.shields.io/badge/release-v2.0.0-00E5FF?style=for-the-badge" alt="Release v2.0.0" />
   </a>
-  <img src="https://img.shields.io/badge/built%20with-Rust%20%2B%20Tauri%20v2-orange?style=for-the-badge" alt="Rust and Tauri v2" />
+  <img src="https://img.shields.io/badge/built%20with-Rust%20%2B%20Tauri%20v2-3B82F6?style=for-the-badge" alt="Rust and Tauri v2" />
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20SteamOS-1e293b?style=for-the-badge" alt="Platforms" />
   <a href="LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="MIT License" />
   </a>
 </p>
 
-> **"This tool was born simply because I wanted to change the lightbar color of my PS5 controller."**
-
-A lightweight, fast desktop utility written in **Rust + Tauri v2 + React** to control the RGB lightbar, player indicator LEDs, and microphone mute LED of the **Sony PlayStation 5 DualSense** (`0x054C:0x0CE6`) and **DualSense Edge** (`0x054C:0x0DF2`) over **USB-C** and **Bluetooth** — without heavyweight driver suites, ads, or background bloatware.
+> **DualSense Lighting & Telemetry** — A lightweight, ultra-fast desktop & SteamOS suite written in **Rust + Tauri v2 + React** to control RGB lighting, live battery telemetry, adaptive triggers, dynamic lighting effects, in-game hardware combos, and CLI automation for **Sony PlayStation 5 DualSense** (`0x054C:0x0CE6`) and **DualSense Edge** (`0x054C:0x0DF2`) over **USB-C** and **Bluetooth**.
 
 ---
 
 ## Preview
 
 <p align="center">
-  <img src="docs/screenshots/app-preview.png" alt="DualSenseColour PC UI Preview" width="440" />
+  <img src="docs/screenshots/app-preview.png" alt="SenseHue UI Preview" width="440" />
 </p>
 
 ---
@@ -31,11 +29,11 @@ A lightweight, fast desktop utility written in **Rust + Tauri v2 + React** to co
 
 - **Real-time Visual DualSense Preview**: High-resolution controller render with pixel-aligned optical touchpad lightbar glow, ambient halo, 5 Player LEDs, and Mic Mute LED indicator.
 - **Responsive Color Picker & Curated Presets**: Interactive 2D Saturation/Value surface, full-spectrum Hue slider, HEX/RGB live inputs, brightness scaling, and quick presets (*PlayStation Blue, Crimson, Cyan, Emerald, Amber, Violet, Off*).
-- **Native USB & Bluetooth HID Protocol**: Sends hardware output reports directly (`0x02` over USB, `0x31` + BT report flags & IEEE CRC-32 with seed `0xA2` over Bluetooth) at smooth ~45 Hz IPC throttling without blocking the UI.
-- **Hardware Safety & Clean Exit**: Preserves rumble, adaptive triggers, and audio flags safely without zeroing unrelated bytes, and supports optional **System Tray** minimization (`Hide to Tray`).
-- **Steam Keep-Alive Fix**: Periodic LED state refresh option to prevent Steam Input from overriding your custom lightbar color.
-- **Atomic Config Persistence**: Saves your active color, brightness, player LEDs, mic LED mode, and preferences cleanly via atomic `.tmp` + rename writes in the platform config directory.
-- **Frameless Dark Glassmorphism Window**: Native Windows Acrylic/Mica backdrop integration with custom draggable titlebar and zero visual clutter.
+- **Native USB & Bluetooth HID Protocol (With BT `0x31` Unlock)**: Sends hardware output reports directly (`0x02` over USB, `0x31` + `valid_flag2=0x02` / `lightbar_setup=0x02` unlock flags & IEEE CRC-32 seed `0xA2` over Bluetooth) at smooth ~45 Hz IPC throttling without blocking the UI.
+- **Battery Telemetry & Gamer Effects Suite (v2.0)**: Input report telemetry parser (`0%–100%`, charging status, stick drift & circularity), Adaptive Trigger presets, async `EffectEngine` (*Breathing, Prism Flow, Battery Smart, Input Reactive, Audio Beat, Screen Ambilight*), `GameWatcher` profile matcher, and debounced hardware combos (`Mute + D-Pad`).
+- **`sensehue-cli` Companion Tool**: Scriptable command-line control (`--preset`, `--color`, `--brightness`, `--mode`, `--off`, `--status`) for Steam launch options and hotkeys.
+- **Steam Keep-Alive Fix & System Tray**: Periodic LED state refresh option and rich native Windows/Linux System Tray controls (`Hide to Tray`).
+- **Frameless Obsidian Glassmorphism Window**: Native Windows Acrylic/Mica backdrop integration with bespoke translucent glass controls.
 
 ---
 
@@ -51,10 +49,10 @@ A lightweight, fast desktop utility written in **Rust + Tauri v2 + React** to co
 ## Installation
 
 ### Windows 10 / 11
-1. Download the latest release binary or installer from the [GitHub Releases page](https://github.com/Ignaciobrenas/DualSenseColour-PC/releases).
-2. Plug in your DualSense via USB-C or pair it via Bluetooth, then launch `DualSenseColour PC`.
+1. Download the latest release binary or installer from the [GitHub Releases page](https://github.com/Ignaciobrenas/SenseHue/releases).
+2. Plug in your DualSense via USB-C or pair it via Bluetooth, then launch `SenseHue`.
 
-### Linux (Ubuntu / Arch / Fedora / Wayland)
+### Linux (Ubuntu 26.04 / Arch / Fedora / Wayland)
 Non-root users require `udev` permissions for `/dev/hidraw*` devices (`054c:0ce6` and `054c:0df2`). Run the bundled installer script:
 
 ```bash
@@ -62,18 +60,18 @@ chmod +x packaging/linux/install-udev.sh
 sudo ./packaging/linux/install-udev.sh
 ```
 
-Then unplug and reconnect your controller (or reload via `sudo udevadm trigger`). For Wayland WebKitGTK troubleshooting (`WEBKIT_DISABLE_DMABUF_RENDERER=1`), read the [Linux & SteamOS Setup Guide](docs/LINUX_STEAMOS_SETUP.md).
+Then unplug and reconnect your controller (or reload via `sudo udevadm trigger`). For Wayland WebKitGTK troubleshooting (`WEBKIT_DISABLE_DMABUF_RENDERER=1 sensehue`), read the [Linux & SteamOS Setup Guide](docs/LINUX_STEAMOS_SETUP.md).
 
 ### SteamOS / Steam Deck
 1. Switch to **Desktop Mode**.
-2. Install the [AppImage](https://github.com/Ignaciobrenas/DualSenseColour-PC/releases) or install the udev rules from [packaging/linux/99-dualsensecolour.rules](packaging/linux/99-dualsensecolour.rules).
-3. Add **DualSenseColour PC** to Steam as a Non-Steam Game if you want quick access from **Gaming Mode** alongside the **Steam Fix** toggle.
+2. Install the [AppImage](https://github.com/Ignaciobrenas/SenseHue/releases) or install the udev rules from [packaging/linux/99-sensehue.rules](packaging/linux/99-sensehue.rules).
+3. Add **SenseHue** to Steam as a Non-Steam Game if you want quick access from **Gaming Mode** alongside the **Steam Fix** toggle or use `sensehue-cli` in launch options.
 
 ---
 
 ## Architecture & Technical Documentation
 
-- **Backend (`src-tauri/src/`)**: Rust (`hidapi`, `crc32fast`, `thiserror`, `tokio`, `serde`, `window-vibrancy`) with trait-based HID transport abstraction so every protocol encoder, monitor transition, and config serializer is verified offline with mocks.
+- **Backend (`src-tauri/src/`)**: Rust (`hidapi`, `crc32fast`, `thiserror`, `tokio`, `serde`, `window-vibrancy`) with trait-based HID transport abstraction so every protocol encoder, input report parser, effect engine, automation state machine, and config serializer is verified offline with mocks.
 - **Frontend (`src/`)**: React 18, TypeScript, Tailwind CSS v4, Vitest + React Testing Library, and zero-dependency SVG optical lightbar rendering.
 - **Specs**:
   - [DualSense HID Protocol Reference](docs/PROTOCOL_HID.md)

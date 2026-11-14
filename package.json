@@ -1,8 +1,8 @@
 {
-  "name": "dualsensecolour-pc",
+  "name": "sensehue",
   "private": true,
-  "version": "1.0.0",
-  "description": "Controla el color de la barra de luz de tu mando PS5 DualSense en PC de forma rápida, elegante y sin complicaciones.",
+  "version": "2.0.0",
+  "description": "SenseHue — DualSense & DualSense Edge RGB Lighting, Battery Telemetry, Dynamic Effects & Diagnostics Suite for Windows, Linux & SteamOS.",
   "type": "module",
   "scripts": {
     "dev": "vite",

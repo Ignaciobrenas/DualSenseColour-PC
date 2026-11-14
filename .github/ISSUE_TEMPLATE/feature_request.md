@@ -1,6 +1,6 @@
 ---
 name: Sugerencia de Funcionalidad
-about: Propón una mejora para DualSenseColour PC
+about: Propón una mejora para SenseHue
 title: "[FEAT] "
 labels: enhancement
 assignees: ""

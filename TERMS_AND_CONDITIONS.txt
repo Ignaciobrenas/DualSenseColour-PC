@@ -1,38 +1,38 @@
-DualSenseColour PC v1.0.0 — TERMS AND CONDITIONS / TÉRMINOS Y CONDICIONES
-===========================================================================
+SenseHue v2.0.0 — TERMS AND CONDITIONS / TÉRMINOS Y CONDICIONES
+===================================================================
 
 [ESPAÑOL]
 
 1. LICENCIA Y USO DEL SOFTWARE (MIT)
-DualSenseColour PC es software gratuito y de código abierto distribuido bajo la Licencia MIT. Se proporciona «TAL CUAL» («AS IS»), sin garantías expresas ni implícitas de ningún tipo respecto a comerciabilidad, idoneidad para un propósito particular o ausencia de fallos en configuraciones específicas de hardware o sistema operativo.
+SenseHue es software gratuito y de código abierto distribuido bajo la Licencia MIT. Se proporciona «TAL CUAL» («AS IS»), sin garantías expresas ni implícitas de ningún tipo respecto a comerciabilidad, idoneidad para un propósito particular o ausencia de fallos en configuraciones específicas de hardware o sistema operativo.
 
 2. SEGURIDAD DE HARDWARE HID Y FUNCIONAMIENTO OFFLINE
-Esta aplicación se comunica exclusivamente en local con los mandos oficiales Sony PlayStation 5 DualSense (VID 0x054C / PID 0x0CE6) y DualSense Edge (VID 0x054C / PID 0x0DF2) mediante reportes HID estándar de salida:
+Esta aplicación se comunica exclusivamente en local con los mandos oficiales Sony PlayStation 5 DualSense (VID 0x054C / PID 0x0CE6) y DualSense Edge (VID 0x054C / PID 0x0DF2) mediante reportes HID estándar de salida e entrada:
 - USB-C: Reporte 0x02 preservando los bytes de audio, vibración y gatillos adaptativos.
 - Bluetooth: Reporte 0x31 protegido mediante suma de verificación IEEE CRC-32 con semilla 0xA2.
 La aplicación NO modifica ni sobrescribe el firmware interno del controlador ni almacena datos permanentes en su memoria flash.
 
 3. PRIVACIDAD Y AUSENCIA TOTAL DE TELEMETRÍA
-DualSenseColour PC funciona 100 % offline. El paquete frontend se embebe íntegramente dentro del ejecutable sin depender de localhost, servidores remotos, servicios en la nube ni rastreadores. La configuración del usuario (color, brillo, LEDs de jugador, LED de micrófono y preferencias) se guarda exclusivamente de forma local en formato JSON atómico.
+SenseHue funciona 100 % offline. El paquete frontend se embebe íntegramente dentro del ejecutable sin depender de localhost, servidores remotos, servicios en la nube ni rastreadores. La configuración del usuario (color, brillo, LEDs de jugador, LED de micrófono y preferencias) se guarda exclusivamente de forma local en formato JSON atómico.
 
 4. AVISO SOBRE MARCAS COMERCIALES
-«PlayStation», «PS5» y «DualSense» son marcas registradas de Sony Interactive Entertainment Inc. DualSenseColour PC es una herramienta independiente de código abierto y no está afiliada, patrocinada ni respaldada por Sony Interactive Entertainment Inc.
+«PlayStation», «PS5» y «DualSense» son marcas registradas de Sony Interactive Entertainment Inc. SenseHue es una herramienta independiente de código abierto y no está afiliada, patrocinada ni respaldada por Sony Interactive Entertainment Inc.
 
 ---------------------------------------------------------------------------
 
 [ENGLISH]
 
 1. SOFTWARE LICENSE (MIT)
-DualSenseColour PC is free, open-source software distributed under the MIT License. It is provided "AS IS", without warranty of any kind, express or implied, including but not limited to merchantability or fitness for a particular purpose.
+SenseHue is free, open-source software distributed under the MIT License. It is provided "AS IS", without warranty of any kind, express or implied, including but not limited to merchantability or fitness for a particular purpose.
 
 2. HID HARDWARE SAFETY & AUTONOMOUS OPERATION
-This utility communicates locally with Sony PlayStation 5 DualSense (0x054C:0x0CE6) and DualSense Edge (0x054C:0x0DF2) controllers strictly via standard HID output reports (USB 0x02 and Bluetooth 0x31 protected by seed 0xA2 IEEE CRC-32). It does not flash controller firmware or alter internal controller memory.
+This utility communicates locally with Sony PlayStation 5 DualSense (0x054C:0x0CE6) and DualSense Edge (0x054C:0x0DF2) controllers strictly via standard HID output and input reports (USB 0x02 and Bluetooth 0x31 protected by seed 0xA2 IEEE CRC-32). It does not flash controller firmware or alter internal controller memory.
 
 3. 100% OFFLINE PRIVACY
-DualSenseColour PC operates completely offline. All UI assets are bundled inside the executable with zero reliance on localhost servers, external network calls, or telemetry. Preferences are stored strictly on your local machine using atomic JSON writes.
+SenseHue operates completely offline. All UI assets are bundled inside the executable with zero reliance on localhost servers, external network calls, or telemetry. Preferences are stored strictly on your local machine using atomic JSON writes.
 
 4. TRADEMARK DISCLAIMER
-"PlayStation", "PS5", and "DualSense" are registered trademarks of Sony Interactive Entertainment Inc. DualSenseColour PC is an independent utility not affiliated with, endorsed by, or sponsored by Sony Interactive Entertainment Inc.
+"PlayStation", "PS5", and "DualSense" are registered trademarks of Sony Interactive Entertainment Inc. SenseHue is an independent utility not affiliated with, endorsed by, or sponsored by Sony Interactive Entertainment Inc.
 
 ---------------------------------------------------------------------------
 

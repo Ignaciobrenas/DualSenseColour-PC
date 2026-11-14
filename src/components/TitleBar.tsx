@@ -43,9 +43,9 @@ export function TitleBar({ status, onOpenTerms, onResync }: TitleBarProps) {
       className="flex w-full shrink-0 items-center justify-between gap-2 border-b border-white/[0.08] px-3 py-2.5"
     >
       <div className="pointer-events-none flex min-w-0 items-center gap-2">
-        <img src={iconUrl} alt="DualSenseColour PC" className="h-5 w-5 shrink-0 rounded-md" />
+        <img src={iconUrl} alt="SenseHue" className="h-5 w-5 shrink-0 rounded-md" />
         <h1 className="truncate text-[13px] font-semibold tracking-tight text-slate-100">
-          DualSenseColour PC
+          SenseHue
         </h1>
       </div>
 

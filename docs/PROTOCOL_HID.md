@@ -1,6 +1,6 @@
 # Especificación del Protocolo HID DualSense (`USB 0x02` & `Bluetooth 0x31`)
 
-Este documento detalla los paquetes HID de salida (*Output Reports*) implementados por **DualSenseColour PC** en `src-tauri/src/hid/` para controlar la barra LED del panel táctil (*lightbar*), los 5 LEDs indicadores de jugador (*player LEDs*) y el LED de silencio de micrófono (*mic mute LED*).
+Este documento detalla los paquetes HID de salida (*Output Reports*) implementados por **SenseHue** en `src-tauri/src/hid/` para controlar la barra LED del panel táctil (*lightbar*), los 5 LEDs indicadores de jugador (*player LEDs*) y el LED de silencio de micrófono (*mic mute LED*).
 
 ---
 

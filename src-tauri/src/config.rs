@@ -63,12 +63,11 @@ impl AppConfig {
 
     /// Resolves the OS-appropriate config file path (`%APPDATA%` on Windows, `~/.config` on Linux).
     pub fn default_config_path() -> AppResult<PathBuf> {
-        let project_dirs = ProjectDirs::from("com", "ignaciobrenas", "DualSenseColour")
-            .ok_or_else(|| {
-                AppError::Config(
-                    "No se pudo resolver el directorio de configuración del usuario".to_string(),
-                )
-            })?;
+        let project_dirs = ProjectDirs::from("com", "sensehue", "SenseHue").ok_or_else(|| {
+            AppError::Config(
+                "No se pudo resolver el directorio de configuración del usuario".to_string(),
+            )
+        })?;
 
         Ok(project_dirs.config_dir().join(CONFIG_FILE_NAME))
     }
