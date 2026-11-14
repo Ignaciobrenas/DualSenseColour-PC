@@ -1,0 +1,38 @@
+[package]
+name = "dualsensecolour-pc"
+version = "1.0.0"
+description = "Controla el color de la barra de luz de tu mando PS5 DualSense en PC de forma rápida, elegante y sin complicaciones."
+authors = ["Ignacio Breñas"]
+license = "MIT"
+edition = "2021"
+
+[lib]
+name = "dualsensecolour_pc_lib"
+crate-type = ["rlib"]
+
+[[bin]]
+name = "dualsensecolour-pc"
+path = "src/main.rs"
+test = false
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+anyhow = "1.0"
+crc32fast = "1.4"
+directories = "5.0"
+hidapi = "2.6"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tauri = { version = "2.1", features = ["tray-icon", "image-png"] }
+thiserror = "2.0"
+tokio = { version = "1.40", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+window-vibrancy = "0.5"
+
+[dev-dependencies]
+tempfile = "3.14"

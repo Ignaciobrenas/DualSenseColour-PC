@@ -34,4 +34,5 @@ desktop.ini
 # Test coverage & temporary outputs
 coverage/
 *.profraw
+*.tsbuildinfo
 tmp/
