@@ -38,19 +38,19 @@ export function TitleBar({ status }: TitleBarProps) {
   return (
     <header
       data-tauri-drag-region
-      className="flex shrink-0 items-center justify-between border-b border-white/[0.08] px-4 py-2.5"
+      className="flex w-full shrink-0 items-center justify-between gap-2 border-b border-white/[0.08] px-3 py-2.5"
     >
-      <div className="pointer-events-none flex items-center gap-2.5">
-        <img src={iconUrl} alt="DualSenseColour PC" className="h-5 w-5 rounded-md" />
-        <h1 className="text-[13px] font-semibold tracking-tight text-slate-100">
+      <div className="pointer-events-none flex min-w-0 items-center gap-2">
+        <img src={iconUrl} alt="DualSenseColour PC" className="h-5 w-5 shrink-0 rounded-md" />
+        <h1 className="truncate text-[13px] font-semibold tracking-tight text-slate-100">
           DualSenseColour PC
         </h1>
       </div>
 
-      <div data-tauri-drag-region="false" className="flex items-center gap-2">
+      <div data-tauri-drag-region="false" className="flex shrink-0 items-center gap-1.5">
         <ConnectionBadge status={status} />
 
-        <div className="flex items-center gap-1 pl-0.5">
+        <div className="flex items-center gap-0.5 pl-0.5">
           <button
             type="button"
             aria-label="Minimizar ventana"

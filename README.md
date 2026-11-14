@@ -1,120 +1,118 @@
-<div align="center">
+<p align="center">
+  <img src="docs/screenshots/brand-banner.svg" alt="DualSenseColour PC Banner" width="100%" />
+</p>
 
-<img src="docs/screenshots/brand-banner.svg" alt="DualSenseColour PC Banner" width="100%" />
+<p align="center">
+  <a href="https://github.com/Ignaciobrenas/DualSenseColour-PC/releases">
+    <img src="https://img.shields.io/badge/release-v1.0.0-00439C?style=for-the-badge" alt="Release v1.0.0" />
+  </a>
+  <img src="https://img.shields.io/badge/built%20with-Rust%20%2B%20Tauri%20v2-orange?style=for-the-badge" alt="Rust and Tauri v2" />
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20SteamOS-1e293b?style=for-the-badge" alt="Platforms" />
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-10b981?style=for-the-badge" alt="MIT License" />
+  </a>
+</p>
 
-# DualSenseColour PC
+> **"This tool was born simply because I wanted to change the lightbar color of my PS5 controller."**
 
-**Controla la barra de luz RGB, los LEDs de jugador y el indicador de micrófono de tu mando PS5 DualSense desde Windows, Linux y SteamOS sin instalar pesados gestores de juegos.**
-
-[![CI](https://github.com/Ignaciobrenas/DualSenseColour-PC/actions/workflows/ci.yml/badge.svg)](https://github.com/Ignaciobrenas/DualSenseColour-PC/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-00F0FF.svg)](LICENSE)
-[![Stack: Tauri v2 + Rust](https://img.shields.io/badge/Tauri%20v2-Rust%20%2B%20React-7B61FF.svg)](https://tauri.app/)
-[![Platforms](https://img.shields.io/badge/Platforms-Windows%20%7C%20Ubuntu%2026.04%20%7C%20SteamOS-10B981.svg)](docs/LINUX_STEAMOS_SETUP.md)
-
-</div>
-
----
-
-## ¿Por qué nace este proyecto?
-
-> **Esta herramienta nace porque simplemente quería poder cambiar el color de la luz de mi mando de PS5.**
-
-En PC, los mandos DualSense estándar y DualSense Edge suelen quedar bloqueados con un azul tenue genérico (o con la luz completamente apagada) fuera de juegos concretos. Las alternativas habituales obligan a instalar drivers virtuales pesados, servicios en segundo plano con alto consumo de RAM o suites completas llenas de funciones que no necesitas si solo quieres elegir el color de tu mando.
-
-**DualSenseColour PC** resuelve exactamente ese problema con una filosofía directa:
-- Binario nativo ligero con backend en **Rust** (`hidapi` directo a HID) e interfaz **Tauri v2** estilo glassmorphism.
-- Cero drivers virtuales intrusivos ni secuestro del dispositivo XInput/DirectInput.
-- Consumo despreciable en reposo (~0% CPU) y permanencia discreta en el System Tray.
+A lightweight, fast desktop utility written in **Rust + Tauri v2 + React** to control the RGB lightbar, player indicator LEDs, and microphone mute LED of the **Sony PlayStation 5 DualSense** (`0x054C:0x0CE6`) and **DualSense Edge** (`0x054C:0x0DF2`) over **USB-C** and **Bluetooth** — without heavyweight driver suites, ads, or background bloatware.
 
 ---
 
-## Características Principales
+## Preview
 
-- **Protocolo HID DualSense completo**:
-  - **USB (`Output Report 0x02`, 63 bytes)**: respuesta instantánea con escalado de brillo hardware y cero latencia.
-  - **Bluetooth (`Output Report 0x31`, 78 bytes)**: cálculo exacto de **CRC-32 (IEEE 802.3 con semilla `0xA2`)**, secuencia circular de 4 bits y apertura nativa automática mediante Feature Report `0x05`/`0x20`.
-  - Compatible con **DualSense (`054C:0CE6`)** y **DualSense Edge (`054C:0DF2`)**.
-- **Vista previa realista en tiempo real**: render cenital de alta definición del DualSense con iluminación LED reactiva, halo ambiental dinámico, los 5 LEDs de jugador e indicador de mute de micrófono.
-- **Paleta RGB completa + 6 presets oficiales + Apagar LED**:
-  - `PlayStation Blue` (`#00439C`)
-  - `Crimson Red` (`#FF1744`)
-  - `Cyber Cyan` (`#00F0FF`)
-  - `Emerald` (`#00E676`)
-  - `Gold` (`#FFD600`)
-  - `Violet` (`#9D4EDD`)
-  - Botón directo `Apagar LED` (`#000000`)
-- **LEDs de jugador (1–5) y LED de micrófono**: enciende de 0 a 5 LEDs indicadores inferiores con patrón oficial Sony y alterna el LED ámbar del botón Mute (`Apagado`, `Encendido`, `Pulso`).
-- **Hotplug y memoria persistente**: guarda tus preferencias en JSON y reaplica tu color automáticamente en < 1.5 s cada vez que conectas o despiertas el mando por cable o Bluetooth.
-- **System Tray + Keep-Alive SteamOS**: acceso rápido a tus presets favoritos desde la bandeja del sistema y modo *Keep-Alive* para mantener tu color frente a resets de Steam Input.
+<p align="center">
+  <img src="docs/screenshots/app-preview.png" alt="DualSenseColour PC UI Preview" width="440" />
+</p>
 
 ---
 
-## Instalación por Plataforma
+## Key Features
+
+- **Real-time Visual DualSense Preview**: High-resolution controller render with pixel-aligned optical touchpad lightbar glow, ambient halo, 5 Player LEDs, and Mic Mute LED indicator.
+- **Responsive Color Picker & Curated Presets**: Interactive 2D Saturation/Value surface, full-spectrum Hue slider, HEX/RGB live inputs, brightness scaling, and quick presets (*PlayStation Blue, Crimson, Cyan, Emerald, Amber, Violet, Off*).
+- **Native USB & Bluetooth HID Protocol**: Sends hardware output reports directly (`0x02` over USB, `0x31` + BT report flags & IEEE CRC-32 with seed `0xA2` over Bluetooth) at smooth ~45 Hz IPC throttling without blocking the UI.
+- **Hardware Safety & Clean Exit**: Preserves rumble, adaptive triggers, and audio flags safely without zeroing unrelated bytes, and supports optional **System Tray** minimization (`Hide to Tray`).
+- **Steam Keep-Alive Fix**: Periodic LED state refresh option to prevent Steam Input from overriding your custom lightbar color.
+- **Atomic Config Persistence**: Saves your active color, brightness, player LEDs, mic LED mode, and preferences cleanly via atomic `.tmp` + rename writes in the platform config directory.
+- **Frameless Dark Glassmorphism Window**: Native Windows Acrylic/Mica backdrop integration with custom draggable titlebar and zero visual clutter.
+
+---
+
+## Supported Controllers
+
+| Model | Vendor ID | Product ID | USB-C (`0x02`) | Bluetooth (`0x31` + CRC-32) |
+| :--- | :---: | :---: | :---: | :---: |
+| **Sony DualSense** (`CFI-ZCT1W`) | `0x054C` | `0x0CE6` | Supported | Supported |
+| **Sony DualSense Edge** (`CFI-ZCP1`) | `0x054C` | `0x0DF2` | Supported | Supported |
+
+---
+
+## Installation
 
 ### Windows 10 / 11
-1. Descarga el último instalador `.exe` / `.msi` o ejecutable portable desde [**GitHub Releases**](https://github.com/Ignaciobrenas/DualSenseColour-PC/releases).
-2. No requiere drivers externos (usa el subsistema HID nativo de Windows).
-3. Conecta tu DualSense por USB-C o Bluetooth y abre **DualSenseColour PC**.
+1. Download the latest release binary or installer from the [GitHub Releases page](https://github.com/Ignaciobrenas/DualSenseColour-PC/releases).
+2. Plug in your DualSense via USB-C or pair it via Bluetooth, then launch `DualSenseColour PC`.
 
-### Ubuntu 26.04 LTS (Wayland) y derivados Debian
-Instala las dependencias de sistema necesarias y las reglas `udev` para acceder a `hidraw` sin `root`:
+### Linux (Ubuntu / Arch / Fedora / Wayland)
+Non-root users require `udev` permissions for `/dev/hidraw*` devices (`054c:0ce6` and `054c:0df2`). Run the bundled installer script:
 
 ```bash
-sudo apt update
-sudo apt install -y libwebkit2gtk-4.1-0 libayatana-appindicator3-1 libhidapi-hidraw0
+chmod +x packaging/linux/install-udev.sh
 sudo ./packaging/linux/install-udev.sh
 ```
 
-Si ejecutas bajo una sesión Wayland con ciertos drivers NVIDIA/DMABUF, consulta [`docs/LINUX_STEAMOS_SETUP.md`](docs/LINUX_STEAMOS_SETUP.md) (`WEBKIT_DISABLE_DMABUF_RENDERER=1`).
+Then unplug and reconnect your controller (or reload via `sudo udevadm trigger`). For Wayland WebKitGTK troubleshooting (`WEBKIT_DISABLE_DMABUF_RENDERER=1`), read the [Linux & SteamOS Setup Guide](docs/LINUX_STEAMOS_SETUP.md).
 
 ### SteamOS / Steam Deck
-Consulta la guía específica en [`docs/LINUX_STEAMOS_SETUP.md`](docs/LINUX_STEAMOS_SETUP.md) para instalar la AppImage y aplicar las reglas `udev` en `/etc/udev/rules.d/` sin tocar el sistema de archivos inmutable.
+1. Switch to **Desktop Mode**.
+2. Install the [AppImage](https://github.com/Ignaciobrenas/DualSenseColour-PC/releases) or install the udev rules from [packaging/linux/99-dualsensecolour.rules](packaging/linux/99-dualsensecolour.rules).
+3. Add **DualSenseColour PC** to Steam as a Non-Steam Game if you want quick access from **Gaming Mode** alongside the **Steam Fix** toggle.
 
 ---
 
-## Documentación Técnica
+## Architecture & Technical Documentation
 
-- [**PROTOCOL_HID.md**](docs/PROTOCOL_HID.md) — Especificación exacta de los reportes HID `0x02` (USB) y `0x31` (Bluetooth), flags de validez, bitmasks de Player LEDs y CRC-32 `0xA2`.
-- [**LINUX_STEAMOS_SETUP.md**](docs/LINUX_STEAMOS_SETUP.md) — Configuración `udev`, dependencias de Ubuntu 26.04 Wayland y notas para Steam Deck / SteamOS.
+- **Backend (`src-tauri/src/`)**: Rust (`hidapi`, `crc32fast`, `thiserror`, `tokio`, `serde`, `window-vibrancy`) with trait-based HID transport abstraction so every protocol encoder, monitor transition, and config serializer is verified offline with mocks.
+- **Frontend (`src/`)**: React 18, TypeScript, Tailwind CSS v4, Vitest + React Testing Library, and zero-dependency SVG optical lightbar rendering.
+- **Specs**:
+  - [DualSense HID Protocol Reference](docs/PROTOCOL_HID.md)
+  - [Linux & SteamOS Setup Guide](docs/LINUX_STEAMOS_SETUP.md)
 
 ---
 
-## Desarrollo y Testing Local
+## Development & Building from Source
 
-Requisitos previos: **Node.js 20+**, **Rust stable** (`fmt` y `clippy` incluidos) y dependencias de Tauri v2 para tu sistema operativo.
+### Prerequisites
+- [Node.js](https://nodejs.org/) 20+
+- [Rust](https://rustup.rs/) stable toolchain
+- On Linux: `libudev-dev`, `libwebkit2gtk-4.1-dev`, `libappindicator3-dev`, `librsvg2-dev`, `patchelf`
+
+### Commands
 
 ```bash
-# 1. Instalar dependencias del frontend
+# Install frontend dependencies
 npm install
 
-# 2. Calidad y tests del frontend
+# Run full desktop app in dev mode (React + Rust backend)
+npm run tauri dev
+
+# Frontend quality gate
 npm run lint
 npm run typecheck
 npm test
 npm run build
 
-# 3. Calidad y tests del backend Rust (HID + CRC-32 + Monitor Mock)
+# Rust quality gate (from src-tauri/)
 cd src-tauri
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test
-
-# 4. Ejecutar aplicación completa en desarrollo
-cd ..
-npm run tauri dev
+cargo build --release
 ```
 
 ---
 
-## Flujo de Contribución
+## License
 
-El proyecto utiliza **GitHub Flow** con integración previa en `staging`:
-1. Crea una rama desde `staging` (`feat/issue-<N>-<slug>`, `fix/...`, `docs/...`).
-2. Sigue **Conventional Commits** referenciando la issue (`closes #<N>`).
-3. Abre una Pull Request hacia `staging` asegurándote de que CI (`lint`, `typecheck`, `vitest`, `cargo fmt`, `cargo clippy`, `cargo test`) pasa en verde.
-
----
-
-<div align="center">
-  Hecho con 🦀 Rust + ⚛️ React + 💙 Tauri v2 · Licencia <a href="LICENSE">MIT</a>
-</div>
+Distributed under the **MIT License**. See [LICENSE](LICENSE) for full details.
