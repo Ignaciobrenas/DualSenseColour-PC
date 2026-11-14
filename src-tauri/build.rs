@@ -24,4 +24,16 @@ fn main() {
     }
 
     tauri_build::build();
+
+    // tauri_build only attaches libresource.a (which embeds the ComCtl32 v6 SxS manifest
+    // needed for TaskDialogIndirect) to `bin` targets. Attach it generally so unit test
+    // harnesses (`cargo test`) also resolve ComCtl32 v6 instead of hitting 0xc0000139.
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+        if let Ok(out_dir) = std::env::var("OUT_DIR") {
+            let resource_lib = std::path::Path::new(&out_dir).join("libresource.a");
+            if resource_lib.exists() {
+                println!("cargo:rustc-link-arg={}", resource_lib.display());
+            }
+        }
+    }
 }
