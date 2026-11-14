@@ -2,12 +2,14 @@
 
 :root {
   color-scheme: dark;
-  --bg-glass-primary: rgba(10, 12, 18, 0.78);
-  --bg-glass-card: rgba(255, 255, 255, 0.045);
-  --bg-glass-elevated: rgba(255, 255, 255, 0.085);
-  --border-glass: rgba(255, 255, 255, 0.13);
-  --border-glass-subtle: rgba(255, 255, 255, 0.075);
-  --highlight-specular: rgba(255, 255, 255, 0.16);
+  --bg-glass-primary: rgba(8, 11, 18, 0.50);
+  --bg-glass-card: rgba(14, 19, 32, 0.32);
+  --bg-glass-elevated: rgba(255, 255, 255, 0.11);
+  --border-glass: rgba(255, 255, 255, 0.18);
+  --border-glass-subtle: rgba(255, 255, 255, 0.10);
+  --border-specular: rgba(255, 255, 255, 0.18);
+  --border-subtle: rgba(255, 255, 255, 0.10);
+  --highlight-specular: rgba(255, 255, 255, 0.22);
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
@@ -45,26 +47,44 @@ body,
   background:
     radial-gradient(
       circle at 50% 18%,
-      rgba(var(--accent-rgb), 0.22) 0%,
-      rgba(var(--accent-rgb), 0.06) 38%,
-      transparent 72%
+      rgba(var(--accent-rgb), 0.24) 0%,
+      rgba(var(--accent-rgb), 0.08) 40%,
+      transparent 74%
     ),
     var(--bg-glass-primary);
-  backdrop-filter: blur(22px) saturate(140%);
-  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(28px) saturate(170%);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
   border: 1px solid var(--border-glass);
   box-shadow:
     inset 0 1px 0 var(--highlight-specular),
-    0 24px 64px rgba(0, 0, 0, 0.65);
+    0 24px 64px rgba(0, 0, 0, 0.58);
   transition: background 240ms ease-out;
+}
+
+.glass-modal {
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(var(--accent-rgb), 0.22) 0%,
+      rgba(14, 165, 233, 0.08) 38%,
+      transparent 75%
+    ),
+    rgba(8, 12, 22, 0.58);
+  backdrop-filter: blur(32px) saturate(185%);
+  -webkit-backdrop-filter: blur(32px) saturate(185%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    0 28px 72px rgba(0, 0, 0, 0.68);
 }
 
 .glass-card {
   background: var(--bg-glass-card);
   border: 1px solid var(--border-glass-subtle);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
   transition:
     background var(--transition-ui),
     border-color var(--transition-ui),
@@ -72,12 +92,15 @@ body,
 }
 
 .glass-card:hover {
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .glass-pill {
   background: var(--bg-glass-card);
   border: 1px solid var(--border-glass-subtle);
+  backdrop-filter: blur(14px) saturate(145%);
+  -webkit-backdrop-filter: blur(14px) saturate(145%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transition:
     background var(--transition-ui),
     border-color var(--transition-ui),
@@ -87,12 +110,80 @@ body,
 
 .glass-pill:hover {
   background: var(--bg-glass-elevated);
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
 }
 
 .glass-pill:active {
   transform: scale(0.97);
+}
+
+.ps-action-tile {
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.09) 0%,
+    rgba(14, 19, 34, 0.36) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(16px) saturate(155%);
+  -webkit-backdrop-filter: blur(16px) saturate(155%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 6px 18px rgba(0, 0, 0, 0.28);
+  transition:
+    background var(--transition-ui),
+    border-color var(--transition-ui),
+    box-shadow var(--transition-ui),
+    transform var(--transition-ui);
+}
+
+.ps-action-tile:hover {
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(20, 28, 48, 0.48) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 10px 24px rgba(0, 0, 0, 0.38);
+  transform: translateY(-1px);
+}
+
+.ps-action-tile:active {
+  transform: scale(0.98);
+}
+
+.ps-cta-btn {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 98, 224, 0.9) 0%,
+    rgba(14, 165, 233, 0.85) 52%,
+    rgba(56, 189, 248, 0.9) 100%
+  );
+  border: 1px solid rgba(125, 211, 252, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 8px 24px rgba(14, 165, 233, 0.35),
+    0 0 0 1px rgba(56, 189, 248, 0.22);
+  transition:
+    filter var(--transition-ui),
+    box-shadow var(--transition-ui),
+    transform var(--transition-ui);
+}
+
+.ps-cta-btn:hover {
+  filter: brightness(1.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 12px 30px rgba(14, 165, 233, 0.5),
+    0 0 0 1px rgba(186, 230, 253, 0.45);
+  transform: translateY(-1px);
+}
+
+.ps-cta-btn:active {
+  transform: scale(0.985);
 }
 
 /* Custom sleek range slider for brightness and RGB fine tuning */
@@ -155,8 +246,11 @@ input[type="range"].glass-slider::-moz-range-thumb {
 
 @media (prefers-reduced-motion: reduce) {
   .glass-shell,
+  .glass-modal,
   .glass-card,
   .glass-pill,
+  .ps-action-tile,
+  .ps-cta-btn,
   .animate-mic-pulse {
     transition: none;
     animation: none;

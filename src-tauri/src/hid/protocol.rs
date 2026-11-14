@@ -24,6 +24,12 @@ pub const VALID_FLAG1_MIC_MUTE_LED_ENABLE: u8 = 0x01;
 pub const VALID_FLAG1_LIGHTBAR_ENABLE: u8 = 0x04;
 pub const VALID_FLAG1_PLAYER_INDICATOR_ENABLE: u8 = 0x10;
 
+/// Bitmask inside `valid_flag2` enabling lightbar setup control
+/// (`DS_OUTPUT_VALID_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE`).
+pub const VALID_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE: u8 = 0x02;
+/// Value for `lightbar_setup` (`DS_OUTPUT_LIGHTBAR_SETUP_LIGHT_OUT`) that unlocks custom RGB over Bluetooth.
+pub const LIGHTBAR_SETUP_LIGHT_OUT: u8 = 0x02;
+
 /// Desired hardware state applied to connected DualSense controllers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DualSenseOutputState {
@@ -63,6 +69,14 @@ pub const fn player_count_to_mask(count: u8) -> u8 {
     }
 }
 
+fn set_lightbar_setup_unlock(buf: &mut [u8], base_offset: usize) {
+    // Unlock Bluetooth lightbar override (hid-playstation DS_OUTPUT_VALID_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE
+    // and DS_OUTPUT_LIGHTBAR_SETUP_LIGHT_OUT).
+    buf[base_offset + 38] = VALID_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE;
+    buf[base_offset + 39] = VALID_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE;
+    buf[base_offset + 41] = LIGHTBAR_SETUP_LIGHT_OUT;
+}
+
 fn populate_common_payload(
     buf: &mut [u8],
     base_offset: usize,
@@ -82,6 +96,8 @@ fn populate_common_payload(
         buf[base_offset + 8] = state.mic_led.as_hid_byte();
         buf[base_offset + 43] = player_count_to_mask(state.player_leds);
     }
+
+    set_lightbar_setup_unlock(buf, base_offset);
 
     let scaled = state.color.apply_brightness(state.brightness);
     buf[base_offset + 44] = scaled.r;
@@ -148,6 +164,30 @@ pub fn build_bt_full_report(state: &DualSenseOutputState, seq: u8) -> [u8; BT_RE
     report[1] = (seq & 0x0F) << 4;
     report[2] = BT_OUTPUT_TAG;
     populate_common_payload(&mut report, 3, state, true);
+
+    let crc = compute_dualsense_bt_crc32(&report[..74]);
+    report[74..78].copy_from_slice(&crc.to_le_bytes());
+    report
+}
+
+/// Builds a 63-byte USB HID Output Report (`0x02`) that resets/unlocks the DualSense lightbar state machine.
+#[must_use]
+pub fn build_usb_reset_leds_report() -> [u8; USB_REPORT_LEN] {
+    let mut report = [0u8; USB_REPORT_LEN];
+    report[0] = USB_REPORT_ID;
+    set_lightbar_setup_unlock(&mut report, 1);
+    report
+}
+
+/// Builds a 78-byte Bluetooth HID Output Report (`0x31`) that resets/unlocks the DualSense
+/// Bluetooth startup lightbar animation (`DS_OUTPUT_LIGHTBAR_SETUP_LIGHT_OUT`) before RGB programming.
+#[must_use]
+pub fn build_bt_reset_leds_report(seq: u8) -> [u8; BT_REPORT_LEN] {
+    let mut report = [0u8; BT_REPORT_LEN];
+    report[0] = BT_REPORT_ID;
+    report[1] = (seq & 0x0F) << 4;
+    report[2] = BT_OUTPUT_TAG;
+    set_lightbar_setup_unlock(&mut report, 3);
 
     let crc = compute_dualsense_bt_crc32(&report[..74]);
     report[74..78].copy_from_slice(&crc.to_le_bytes());
@@ -261,5 +301,38 @@ mod tests {
             assert_eq!(report[46], expected_mask);
             assert_eq!(&report[47..=49], &[0, 67, 156]);
         }
+    }
+
+    #[test]
+    fn bt_and_usb_reports_include_lightbar_setup_unlock_flags() {
+        let bt_reset = build_bt_reset_leds_report(2);
+        assert_eq!(bt_reset[0], 0x31);
+        assert_eq!(bt_reset[1], 0x20);
+        assert_eq!(bt_reset[2], 0x10);
+        assert_eq!(bt_reset[4], 0x00);
+        assert_eq!(bt_reset[41], VALID_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE);
+        assert_eq!(bt_reset[42], VALID_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE);
+        assert_eq!(bt_reset[44], LIGHTBAR_SETUP_LIGHT_OUT);
+        let expected_crc = compute_dualsense_bt_crc32(&bt_reset[..74]);
+        assert_eq!(
+            u32::from_le_bytes([bt_reset[74], bt_reset[75], bt_reset[76], bt_reset[77]]),
+            expected_crc
+        );
+
+        let bt_color = build_bt_lightbar_report(RgbColor::new(0, 240, 255), 100, 3);
+        assert_eq!(bt_color[41], VALID_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE);
+        assert_eq!(bt_color[42], VALID_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE);
+        assert_eq!(bt_color[44], LIGHTBAR_SETUP_LIGHT_OUT);
+
+        let usb_reset = build_usb_reset_leds_report();
+        assert_eq!(usb_reset[0], 0x02);
+        assert_eq!(usb_reset[39], VALID_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE);
+        assert_eq!(usb_reset[40], VALID_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE);
+        assert_eq!(usb_reset[42], LIGHTBAR_SETUP_LIGHT_OUT);
+
+        let usb_color = build_usb_lightbar_report(RgbColor::new(0, 240, 255), 100);
+        assert_eq!(usb_color[39], VALID_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE);
+        assert_eq!(usb_color[40], VALID_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE);
+        assert_eq!(usb_color[42], LIGHTBAR_SETUP_LIGHT_OUT);
     }
 }

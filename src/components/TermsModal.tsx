@@ -1,4 +1,4 @@
-import { CheckCircle2, RefreshCw, RotateCcw, ShieldCheck, X } from 'lucide-react';
+import { CheckCircle2, ChevronRight, RefreshCw, RotateCcw, ShieldCheck, X } from 'lucide-react';
 import type { ConnectionStatus } from '../types/controller';
 
 interface TermsModalProps {
@@ -24,7 +24,7 @@ export function TermsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-3 backdrop-blur-md"
       role="presentation"
     >
       <div
@@ -32,12 +32,23 @@ export function TermsModal({
         aria-modal="true"
         aria-labelledby="terms-modal-title"
         data-testid="terms-modal"
-        className="glass-shell flex max-h-[620px] w-full flex-col gap-2.5 rounded-2xl p-3.5 text-slate-100 shadow-2xl"
+        className="glass-modal relative flex max-h-[620px] w-full flex-col gap-2.5 overflow-hidden rounded-2xl p-3.5 text-slate-100 shadow-2xl"
       >
-        <div className="flex items-center justify-between border-b border-white/10 pb-2">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-16 left-1/2 h-32 w-56 -translate-x-1/2 rounded-full bg-sky-500/18 blur-2xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-16 right-6 h-28 w-40 rounded-full bg-indigo-500/16 blur-2xl"
+        />
+
+        <div className="relative flex items-center justify-between border-b border-white/[0.10] pb-2">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-sky-400" aria-hidden="true" />
-            <h2 id="terms-modal-title" className="text-xs font-semibold tracking-tight">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-sky-400/35 bg-sky-400/12 shadow-[0_0_12px_rgba(56,189,248,0.28)]">
+              <ShieldCheck className="h-3.5 w-3.5 text-sky-300" aria-hidden="true" />
+            </span>
+            <h2 id="terms-modal-title" className="text-xs font-semibold tracking-tight text-slate-50">
               Términos, Condiciones y Diagnóstico
             </h2>
           </div>
@@ -45,14 +56,14 @@ export function TermsModal({
             type="button"
             aria-label="Cerrar términos y condiciones"
             onClick={onClose}
-            className="flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-100"
+            className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:border-white/25 hover:bg-white/15 hover:text-white"
           >
             <X className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="glass-card flex-1 space-y-2 overflow-y-auto rounded-xl p-2.5 text-[11px] leading-relaxed text-slate-300">
-          <p className="font-semibold text-slate-100">DualSenseColour PC v1.0.0 — Licencia MIT</p>
+        <div className="relative flex-1 space-y-2 overflow-y-auto rounded-xl border border-white/[0.09] bg-white/[0.03] p-2.5 text-[11px] leading-relaxed text-slate-200/90 backdrop-blur-md">
+          <p className="font-semibold text-white">DualSenseColour PC v1.0.0 — Licencia MIT</p>
           <p>
             <strong>1. Uso bajo licencia libre:</strong> Esta aplicación se ofrece gratuitamente y
             «tal cual» («AS IS») bajo licencia MIT, sin garantías implícitas.
@@ -73,9 +84,19 @@ export function TermsModal({
             <strong>4. Marcas registradas:</strong> DualSense y PlayStation son marcas de Sony
             Interactive Entertainment Inc. Proyecto independiente sin afiliación oficial.
           </p>
-          <div className="rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-[10px] text-slate-400">
-            Estado HID actual:{' '}
-            <span className="font-semibold text-slate-200">
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-slate-950/30 px-2.5 py-1.5 text-[10px] text-slate-300 backdrop-blur-sm">
+            <span className="flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className={`h-2 w-2 rounded-full ${
+                  status.connected
+                    ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]'
+                    : 'bg-slate-500'
+                }`}
+              />
+              Estado HID actual:
+            </span>
+            <span className="font-semibold text-slate-100">
               {status.connected
                 ? `Conectado (${status.model === 'DualSenseEdge' ? 'Edge' : 'DualSense'} · ${
                     status.transport === 'usb' ? 'USB' : 'Bluetooth'
@@ -85,24 +106,43 @@ export function TermsModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="relative grid grid-cols-2 gap-2">
           <button
             type="button"
             data-testid="terms-resync-btn"
             onClick={onResync}
-            className="glass-pill inline-flex items-center justify-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[11px] font-medium text-sky-200 hover:border-sky-400/40"
+            className="ps-action-tile group flex items-center gap-2 rounded-xl px-2.5 py-2 text-left hover:border-sky-400/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
           >
-            <RefreshCw className="h-3 w-3" aria-hidden="true" />
-            Sincronizar mando
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-sky-400/35 bg-sky-400/15 text-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.22)] transition-transform group-hover:scale-105">
+              <RefreshCw className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-90" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[11px] font-semibold text-slate-100">
+                Re-sincronizar Mando
+              </span>
+              <span className="block truncate text-[9.5px] text-sky-200/75">
+                Desbloqueo BT 0x31 · Aplicar RGB
+              </span>
+            </span>
           </button>
+
           <button
             type="button"
             data-testid="terms-reset-btn"
             onClick={onResetDefaults}
-            className="glass-pill inline-flex items-center justify-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[11px] font-medium text-amber-200 hover:border-amber-400/40"
+            className="ps-action-tile group flex items-center gap-2 rounded-xl px-2.5 py-2 text-left hover:border-rose-400/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
           >
-            <RotateCcw className="h-3 w-3" aria-hidden="true" />
-            Valores de fábrica
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-rose-400/35 bg-rose-400/15 text-rose-300 shadow-[0_0_12px_rgba(251,113,133,0.2)] transition-transform group-hover:scale-105">
+              <RotateCcw className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-rotate-45" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[11px] font-semibold text-slate-100">
+                Restablecer Fábrica
+              </span>
+              <span className="block truncate text-[9.5px] text-rose-200/75">
+                Restaurar perfil original
+              </span>
+            </span>
           </button>
         </div>
 
@@ -110,10 +150,25 @@ export function TermsModal({
           type="button"
           data-testid="terms-accept-btn"
           onClick={onAccept}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-sky-500/85 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-sky-400"
+          className="ps-cta-btn group relative flex w-full items-center justify-between gap-2 overflow-hidden rounded-xl px-3 py-2 text-left text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
         >
-          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-          Aceptar términos y continuar
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/35 bg-white/15 shadow-inner">
+              <CheckCircle2 className="h-4 w-4 text-white" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 truncate text-[11.5px] font-semibold tracking-tight text-white">
+              Aceptar términos y activar control HID
+            </span>
+          </span>
+          <span className="flex shrink-0 items-center gap-1.5">
+            <span className="rounded-full border border-white/30 bg-white/15 px-2 py-0.5 text-[9px] font-bold tracking-wider text-sky-50 uppercase backdrop-blur-sm">
+              BT & USB LISTO
+            </span>
+            <ChevronRight
+              className="h-3.5 w-3.5 text-white/85 transition-transform group-hover:translate-x-0.5"
+              aria-hidden="true"
+            />
+          </span>
         </button>
       </div>
     </div>
