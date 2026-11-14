@@ -84,10 +84,10 @@ export function ColorControls({
   const hueColor = `hsl(${Math.round(hsv.h)}, 100%, 50%)`;
 
   return (
-    <section aria-label="Controles de color y LEDs" className="flex flex-col gap-2.5">
+    <section aria-label="Controles de color y LEDs" className="flex w-full min-w-0 flex-col gap-2">
       {/* Interactive Color Spectrum & HEX/RGB Card */}
-      <div className="glass-card rounded-2xl p-3">
-        <div className="flex items-stretch gap-3">
+      <div className="glass-card w-full min-w-0 rounded-2xl p-2.5">
+        <div className="flex min-w-0 items-stretch gap-2.5">
           {/* 2D Saturation/Value Surface */}
           <div
             ref={svPadRef}
@@ -110,7 +110,7 @@ export function ColorControls({
                 handleSvPointer(e.clientX, e.clientY, true);
               }
             }}
-            className="relative h-[86px] flex-1 cursor-crosshair overflow-hidden rounded-xl border border-white/15"
+            className="relative h-[82px] min-w-0 flex-1 cursor-crosshair overflow-hidden rounded-xl border border-white/15"
             style={{
               backgroundColor: hueColor,
               backgroundImage:
@@ -129,7 +129,7 @@ export function ColorControls({
           </div>
 
           {/* Color Readout & Quick Power Off */}
-          <div className="flex w-[124px] shrink-0 flex-col justify-between">
+          <div className="flex w-[112px] shrink-0 flex-col justify-between">
             <div className="flex items-center gap-2">
               <span
                 aria-hidden="true"
@@ -226,11 +226,11 @@ export function ColorControls({
       </div>
 
       {/* Brightness & Hardware Secondary Indicators Card */}
-      <div className="glass-card flex flex-col gap-2.5 rounded-2xl p-3">
+      <div className="glass-card flex w-full min-w-0 flex-col gap-2 rounded-2xl p-2.5">
         {/* Brightness Slider */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex min-w-0 items-center gap-2">
           <Sun className="h-3.5 w-3.5 shrink-0 text-amber-300/80" aria-hidden="true" />
-          <span className="w-10 text-[11px] font-medium text-slate-300">Brillo</span>
+          <span className="shrink-0 text-[11px] font-medium text-slate-300">Brillo</span>
           <input
             type="range"
             aria-label="Brillo de la barra LED"
@@ -246,23 +246,23 @@ export function ColorControls({
                 true,
               )
             }
-            className="glass-slider"
+            className="glass-slider min-w-0 flex-1"
             style={{
               background: `linear-gradient(to right, ${currentHex} 0%, ${currentHex} ${config.brightness}%, rgba(255,255,255,0.12) ${config.brightness}%, rgba(255,255,255,0.12) 100%)`,
             }}
           />
           <span
             data-testid="brightness-value"
-            className="font-mono-tabular w-9 text-right text-[11px] font-semibold text-slate-200"
+            className="font-mono-tabular w-8 shrink-0 text-right text-[11px] font-semibold text-slate-200"
           >
             {config.brightness}%
           </span>
         </div>
 
         {/* Player Indicator LEDs + Mic Mute LED */}
-        <div className="grid grid-cols-2 gap-2.5 border-t border-white/[0.06] pt-2">
-          <div className="flex items-center justify-between gap-1.5">
-            <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+        <div className="flex min-w-0 items-center justify-between gap-2 border-t border-white/[0.06] pt-2">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="inline-flex shrink-0 items-center gap-1 text-[10px] text-slate-400">
               <Users className="h-3 w-3" aria-hidden="true" />
               LED
             </span>
@@ -275,7 +275,7 @@ export function ColorControls({
                   aria-pressed={config.player_leds === count}
                   data-testid={`player-led-${count}`}
                   onClick={() => onPlayerAndMicChange(count, config.mic_led)}
-                  className={`font-mono-tabular h-5 w-5 rounded-md text-[10px] font-semibold transition-colors ${
+                  className={`font-mono-tabular h-5 w-[18px] rounded-md text-[10px] font-semibold transition-colors ${
                     config.player_leds === count
                       ? 'bg-white/20 text-white'
                       : 'text-slate-400 hover:text-slate-200'
@@ -287,12 +287,12 @@ export function ColorControls({
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-1.5">
-            <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
+            <span className="inline-flex shrink-0 items-center gap-1 text-[10px] text-slate-400">
               <Mic className="h-3 w-3" aria-hidden="true" />
               Mic
             </span>
-            <div className="flex flex-1 items-center gap-0.5 rounded-lg bg-black/25 p-0.5">
+            <div className="flex max-w-[132px] flex-1 items-center gap-0.5 rounded-lg bg-black/25 p-0.5">
               {MIC_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -301,7 +301,7 @@ export function ColorControls({
                   aria-pressed={config.mic_led === opt.value}
                   data-testid={`mic-led-${opt.value}`}
                   onClick={() => onPlayerAndMicChange(config.player_leds, opt.value)}
-                  className={`h-5 flex-1 rounded-md text-[10px] font-medium transition-colors ${
+                  className={`h-5 flex-1 rounded-md px-1 text-[10px] font-medium transition-colors ${
                     config.mic_led === opt.value
                       ? 'bg-amber-400/25 text-amber-200'
                       : 'text-slate-400 hover:text-slate-200'
