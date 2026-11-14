@@ -232,3 +232,72 @@ export function hsvToRgb({ h, s, v }: HsvColor): RgbColor {
     b: clampByte((bn + m) * 255),
   };
 }
+
+export interface FriendlyErrorMessage {
+  title: string;
+  detail: string;
+  raw: string;
+}
+
+export function formatFriendlyError(rawError: string): FriendlyErrorMessage {
+  const lower = rawError.toLowerCase();
+
+  if (
+    lower.includes('no se detectó ningún mando') ||
+    lower.includes('not connected') ||
+    lower.includes('0x0000048f') ||
+    lower.includes('no such device') ||
+    lower.includes('controllernotfound')
+  ) {
+    return {
+      title: 'Mando no detectado',
+      detail: 'Conéctalo por USB o Bluetooth, enciéndelo con el botón PS y pulsa Reintentar.',
+      raw: rawError,
+    };
+  }
+
+  if (
+    lower.includes('permisos') ||
+    lower.includes('permission') ||
+    lower.includes('denied') ||
+    lower.includes('access')
+  ) {
+    return {
+      title: 'Acceso bloqueado al mando',
+      detail:
+        'Otro programa (como Steam Input o un juego) usa el mando en exclusiva, o faltan permisos HID.',
+      raw: rawError,
+    };
+  }
+
+  if (
+    lower.includes('writefile') ||
+    lower.includes('no respondió') ||
+    lower.includes('despertar') ||
+    lower.includes('read_timeout') ||
+    lower.includes('telemetría')
+  ) {
+    return {
+      title: 'El mando no respondió a tiempo',
+      detail: 'Si estás por Bluetooth, pulsa cualquier botón para despertarlo y usa Reintentar.',
+      raw: rawError,
+    };
+  }
+
+  if (lower.includes('hexadecimal') || lower.includes('color no válido') || lower.includes('color inválido')) {
+    return {
+      title: 'Color no válido',
+      detail: 'Introduce un código hexadecimal válido como #00E5FF.',
+      raw: rawError,
+    };
+  }
+
+  return {
+    title: 'Problema de conexión con el mando',
+    detail:
+      rawError.trim().length > 0 && !lower.includes('0x')
+        ? rawError
+        : 'Comprueba la conexión USB o Bluetooth del DualSense y pulsa Reintentar.',
+    raw: rawError,
+  };
+}

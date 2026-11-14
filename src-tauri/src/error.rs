@@ -4,19 +4,19 @@ use thiserror::Error;
 /// Typed errors across HID communication, configuration persistence, and Tauri IPC.
 #[derive(Debug, Error)]
 pub enum AppError {
-    #[error("No se detectó ningún mando DualSense conectado")]
+    #[error("No se detectó ningún mando DualSense. Conéctalo por USB o Bluetooth, enciéndelo y pulsa Reintentar.")]
     ControllerNotFound,
 
-    #[error("Permisos insuficientes para acceder al dispositivo HID: {0}")]
+    #[error("Sin permisos para acceder al mando ({0}). En Linux revisa las reglas udev; en Windows cierra apps exclusivas.")]
     PermissionDenied(String),
 
-    #[error("Error de comunicación HID: {0}")]
+    #[error("No se pudo comunicar con el mando: {0}")]
     HidIo(String),
 
-    #[error("Color inválido: {0}")]
+    #[error("El formato del color no es válido ({0}). Usa un código hexadecimal como #00E5FF.")]
     InvalidColor(String),
 
-    #[error("Error de configuración: {0}")]
+    #[error("No se pudo leer o guardar la configuración: {0}")]
     Config(String),
 }
 

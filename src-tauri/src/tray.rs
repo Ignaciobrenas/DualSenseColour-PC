@@ -6,11 +6,13 @@ use tracing::warn;
 
 use crate::config::AppConfig;
 use crate::hid::color::PRESETS;
+use crate::hid::input_report::ChargingState;
 use crate::hid::monitor::ConnectionStatus;
 use crate::hid::transport::TransportType;
 
 pub const TRAY_ID: &str = "sensehue-tray";
 pub const MENU_ID_STATUS: &str = "status";
+pub const MENU_ID_BATTERY_SUMMARY: &str = "battery-summary";
 pub const MENU_ID_COLOR_SUMMARY: &str = "color-summary";
 pub const MENU_ID_TOGGLE_WINDOW: &str = "toggle-window";
 pub const MENU_ID_RESYNC: &str = "resync-controller";
@@ -98,6 +100,23 @@ pub fn format_tray_status(status: &ConnectionStatus) -> String {
     }
 }
 
+/// Formats the live controller battery readout line displayed inside the tray menu header.
+#[must_use]
+pub fn format_tray_battery_summary(status: &ConnectionStatus) -> String {
+    if !status.connected {
+        return "Batería: Sin mando conectado".to_string();
+    }
+
+    match status.battery_percent {
+        Some(pct) => match status.charging_state {
+            Some(ChargingState::Charging) => format!("Batería: {pct}% (Cargando)"),
+            Some(ChargingState::Full) => format!("Batería: {pct}% (Completa)"),
+            _ => format!("Batería: {pct}%"),
+        },
+        None => "Batería: Leyendo telemetría...".to_string(),
+    }
+}
+
 /// Formats the active color and brightness line shown inside the tray header.
 #[must_use]
 pub fn format_tray_color_summary(config: &AppConfig) -> String {
@@ -109,9 +128,10 @@ pub fn format_tray_color_summary(config: &AppConfig) -> String {
 #[must_use]
 pub fn format_tray_tooltip(status: &ConnectionStatus, config: &AppConfig) -> String {
     let status_text = format_tray_status(status);
+    let battery_text = format_tray_battery_summary(status);
     let hex = config.color.to_hex();
     format!(
-        "SenseHue\n{status_text}\nLuz: {hex} ({}%)",
+        "SenseHue\n{status_text}\n{battery_text}\nLuz: {hex} ({}%)",
         config.brightness
     )
 }
@@ -279,6 +299,7 @@ pub fn build_dynamic_tray_icon(
 /// Holds the active tray icon, status/color headers, and checkable settings items for live updates.
 pub struct TrayHandles {
     status_item: MenuItem<Wry>,
+    battery_item: MenuItem<Wry>,
     color_item: MenuItem<Wry>,
     apply_on_connect_item: CheckMenuItem<Wry>,
     steam_fix_item: CheckMenuItem<Wry>,
@@ -292,6 +313,12 @@ impl TrayHandles {
         let text = format_tray_status(status);
         if let Err(err) = self.status_item.set_text(text) {
             warn!(%err, "No se pudo actualizar el texto de estado en el tray");
+        }
+        if let Err(err) = self
+            .battery_item
+            .set_text(format_tray_battery_summary(status))
+        {
+            warn!(%err, "No se pudo actualizar la batería en el tray");
         }
     }
 
@@ -385,6 +412,13 @@ where
         app,
         MENU_ID_STATUS,
         format_tray_status(initial_status),
+        false,
+        None::<&str>,
+    )?;
+    let battery_item = MenuItem::with_id(
+        app,
+        MENU_ID_BATTERY_SUMMARY,
+        format_tray_battery_summary(initial_status),
         false,
         None::<&str>,
     )?;
@@ -494,6 +528,7 @@ where
 
     let mut menu_refs: Vec<&dyn tauri::menu::IsMenuItem<Wry>> = vec![
         &status_item,
+        &battery_item,
         &color_item,
         &sep_header,
         &toggle_item,
@@ -546,6 +581,7 @@ where
 
     Ok(TrayHandles {
         status_item,
+        battery_item,
         color_item,
         apply_on_connect_item,
         steam_fix_item,
@@ -623,11 +659,44 @@ mod tests {
             transport: Some(TransportType::Bluetooth),
             model: Some(DeviceModel::DualSense),
             battery_percent: Some(80),
+            charging_state: Some(ChargingState::Discharging),
             ..Default::default()
         };
         assert_eq!(
             format_tray_status(&bt_battery_status),
             "Estado: DualSense (Bluetooth) · 80%"
+        );
+        assert_eq!(
+            format_tray_battery_summary(&bt_battery_status),
+            "Batería: 80%"
+        );
+
+        let charging_status = ConnectionStatus {
+            connected: true,
+            transport: Some(TransportType::Usb),
+            battery_percent: Some(60),
+            charging_state: Some(ChargingState::Charging),
+            ..Default::default()
+        };
+        assert_eq!(
+            format_tray_battery_summary(&charging_status),
+            "Batería: 60% (Cargando)"
+        );
+
+        let full_status = ConnectionStatus {
+            connected: true,
+            transport: Some(TransportType::Usb),
+            battery_percent: Some(100),
+            charging_state: Some(ChargingState::Full),
+            ..Default::default()
+        };
+        assert_eq!(
+            format_tray_battery_summary(&full_status),
+            "Batería: 100% (Completa)"
+        );
+        assert_eq!(
+            format_tray_battery_summary(&ConnectionStatus::default()),
+            "Batería: Sin mando conectado"
         );
 
         let cfg = AppConfig {
@@ -640,8 +709,9 @@ mod tests {
             "Luz activa: #00F0FF · Brillo 80%"
         );
 
-        let tooltip = format_tray_tooltip(&usb_status, &cfg);
-        assert!(tooltip.contains("DualSense (USB)"));
+        let tooltip = format_tray_tooltip(&bt_battery_status, &cfg);
+        assert!(tooltip.contains("DualSense (Bluetooth)"));
+        assert!(tooltip.contains("Batería: 80%"));
         assert!(tooltip.contains("#00F0FF (80%)"));
     }
 

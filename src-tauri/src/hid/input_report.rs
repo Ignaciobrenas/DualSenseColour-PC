@@ -113,7 +113,7 @@ pub fn circularity_error_percent(x: f32, y: f32) -> f32 {
     (stick_magnitude(x, y) - 1.0).abs() * 100.0
 }
 
-/// Parses a USB (`0x01`, >= 54B) or Bluetooth (`0x31`, >= 55B) DualSense HID Input Report.
+/// Parses a USB (`0x01`, >= 11B / full >= 54B) or Bluetooth (`0x31`, >= 55B) DualSense HID Input Report.
 pub fn parse_input_report(data: &[u8]) -> AppResult<DualSenseTelemetry> {
     let Some(&report_id) = data.first() else {
         return Err(AppError::HidIo("Input report vacío".to_string()));
@@ -130,7 +130,9 @@ pub fn parse_input_report(data: &[u8]) -> AppResult<DualSenseTelemetry> {
         }
     };
 
-    if data.len() <= battery_offset {
+    if data.len() <= common_offset + 9
+        || (report_id == BT_INPUT_REPORT_ID && data.len() <= battery_offset)
+    {
         return Err(AppError::HidIo(format!(
             "Input report 0x{report_id:02X} truncado ({} bytes; se requieren al menos {})",
             data.len(),
@@ -151,10 +153,20 @@ pub fn parse_input_report(data: &[u8]) -> AppResult<DualSenseTelemetry> {
     let ps_pressed = (buttons_2 & 0x01) != 0;
     let mute_pressed = (buttons_2 & 0x04) != 0;
 
-    let status = data[battery_offset];
-    let battery_raw = status & 0x0F;
-    let battery_percent = battery_raw.min(10) * 10;
-    let charging_state = ChargingState::from_nibble((status & 0xF0) >> 4);
+    let (battery_percent, charging_state) =
+        if report_id == USB_INPUT_REPORT_ID && data.len() <= battery_offset {
+            (0, ChargingState::Unknown(0))
+        } else {
+            let status = data[battery_offset];
+            let charging_state = ChargingState::from_nibble((status & 0xF0) >> 4);
+            let battery_raw = status & 0x0F;
+            let battery_percent = if charging_state == ChargingState::Full {
+                100
+            } else {
+                battery_raw.min(10) * 10
+            };
+            (battery_percent, charging_state)
+        };
 
     Ok(DualSenseTelemetry {
         battery_percent,

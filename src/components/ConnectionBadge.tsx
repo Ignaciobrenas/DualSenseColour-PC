@@ -1,4 +1,4 @@
-import { BatteryCharging, Bluetooth, Usb, WifiOff } from 'lucide-react';
+import { Battery, BatteryCharging, Bluetooth, Usb, WifiOff } from 'lucide-react';
 import type { ConnectionStatus } from '../types/controller';
 
 interface ConnectionBadgeProps {
@@ -33,10 +33,16 @@ export function ConnectionBadge({ status, onResync }: ConnectionBadgeProps) {
   const batteryPercent =
     typeof status.battery_percent === 'number' ? status.battery_percent : null;
   const isCharging = status.charging_state === 'charging';
+  const isFull = status.charging_state === 'full';
   const multiCount =
     typeof status.connected_count === 'number' && status.connected_count > 1
       ? status.connected_count
       : null;
+
+  const batteryTitle =
+    batteryPercent !== null
+      ? `Batería del mando: ${batteryPercent}%${isCharging ? ' (Cargando)' : isFull ? ' (Completa)' : ''}`
+      : 'Leyendo nivel de batería del mando...';
 
   return (
     <button
@@ -58,15 +64,20 @@ export function ConnectionBadge({ status, onResync }: ConnectionBadgeProps) {
       <span>
         {modelLabel} · {isUsb ? 'USB' : 'Bluetooth'}
       </span>
-      {batteryPercent !== null && (
-        <span
-          data-testid="battery-badge"
-          className={`font-mono-tabular inline-flex items-center gap-0.5 ${batteryColorClass(batteryPercent)}`}
-        >
-          {isCharging && <BatteryCharging className="h-3 w-3" aria-hidden="true" />}
-          · {batteryPercent}%
-        </span>
-      )}
+      <span
+        data-testid="battery-badge"
+        title={batteryTitle}
+        className={`font-mono-tabular inline-flex items-center gap-0.5 ${
+          batteryPercent !== null ? batteryColorClass(batteryPercent) : 'text-slate-300/80'
+        }`}
+      >
+        {isCharging ? (
+          <BatteryCharging className="h-3 w-3" aria-hidden="true" />
+        ) : (
+          <Battery className="h-3 w-3" aria-hidden="true" />
+        )}
+        {batteryPercent !== null ? `${batteryPercent}%` : '...'}
+      </span>
       {multiCount !== null && (
         <span className="font-mono-tabular rounded bg-white/15 px-1 text-[9px] text-white">
           ×{multiCount}

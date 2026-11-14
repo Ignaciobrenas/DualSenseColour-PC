@@ -167,27 +167,35 @@ impl<T: HidTransport> ControllerMonitor<T> {
         self.secondary_controllers = iter.collect();
         self.connected_count = total_connected;
 
-        let mut input_buf = [0u8; 78];
+        let connection_changed =
+            Self::has_connection_changed(self.active_controller.as_ref(), &detected);
+        let mut events = Vec::new();
+
+        if detected.transport == TransportType::Bluetooth && connection_changed {
+            if let Err(err) = self.transport.wake_bluetooth_controller(&detected.path) {
+                warn!(%err, path = %detected.path, "No se pudo despertar el mando Bluetooth");
+                events.push(ControllerEvent::TransportError(err.to_string()));
+            }
+        }
+
+        let mut input_buf = [0u8; 547];
         if let Ok(read_len) = self
             .transport
             .read_input_report(&detected.path, &mut input_buf)
         {
-            if read_len >= 10 {
+            if read_len >= 11 {
                 if let Ok(parsed) = parse_input_report(&input_buf[..read_len]) {
-                    self.last_telemetry = Some(parsed);
+                    let is_dummy_bt_short = detected.transport == TransportType::Bluetooth
+                        && matches!(parsed.charging_state, ChargingState::Unknown(_))
+                        && parsed.battery_percent == 0;
+                    if !is_dummy_bt_short {
+                        self.last_telemetry = Some(parsed);
+                    }
                 }
             }
         }
 
-        if Self::has_connection_changed(self.active_controller.as_ref(), &detected) {
-            let mut events = Vec::new();
-            if detected.transport == TransportType::Bluetooth {
-                if let Err(err) = self.transport.wake_bluetooth_controller(&detected.path) {
-                    warn!(%err, path = %detected.path, "No se pudo despertar el mando Bluetooth");
-                    events.push(ControllerEvent::TransportError(err.to_string()));
-                }
-            }
-
+        if connection_changed {
             self.active_controller = Some(detected.clone());
             self.ticks_since_keep_alive = 0;
             events.push(ControllerEvent::Connected(self.status()));
