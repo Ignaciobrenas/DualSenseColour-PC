@@ -1,9 +1,15 @@
-import { Bluetooth, Usb, WifiOff } from 'lucide-react';
+import { BatteryCharging, Bluetooth, Usb, WifiOff } from 'lucide-react';
 import type { ConnectionStatus } from '../types/controller';
 
 interface ConnectionBadgeProps {
   status: ConnectionStatus;
   onResync?: () => void;
+}
+
+function batteryColorClass(percent: number): string {
+  if (percent >= 50) return 'text-emerald-300';
+  if (percent >= 20) return 'text-amber-300';
+  return 'text-rose-400';
 }
 
 export function ConnectionBadge({ status, onResync }: ConnectionBadgeProps) {
@@ -24,6 +30,13 @@ export function ConnectionBadge({ status, onResync }: ConnectionBadgeProps) {
 
   const isUsb = status.transport === 'usb';
   const modelLabel = status.model === 'DualSenseEdge' ? 'Edge' : 'DualSense';
+  const batteryPercent =
+    typeof status.battery_percent === 'number' ? status.battery_percent : null;
+  const isCharging = status.charging_state === 'charging';
+  const multiCount =
+    typeof status.connected_count === 'number' && status.connected_count > 1
+      ? status.connected_count
+      : null;
 
   return (
     <button
@@ -45,6 +58,20 @@ export function ConnectionBadge({ status, onResync }: ConnectionBadgeProps) {
       <span>
         {modelLabel} · {isUsb ? 'USB' : 'Bluetooth'}
       </span>
+      {batteryPercent !== null && (
+        <span
+          data-testid="battery-badge"
+          className={`font-mono-tabular inline-flex items-center gap-0.5 ${batteryColorClass(batteryPercent)}`}
+        >
+          {isCharging && <BatteryCharging className="h-3 w-3" aria-hidden="true" />}
+          · {batteryPercent}%
+        </span>
+      )}
+      {multiCount !== null && (
+        <span className="font-mono-tabular rounded bg-white/15 px-1 text-[9px] text-white">
+          ×{multiCount}
+        </span>
+      )}
     </button>
   );
 }

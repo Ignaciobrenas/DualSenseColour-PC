@@ -7,6 +7,7 @@ import {
   rgbToHsv,
   type AppConfig,
   type ColorPreset,
+  type LightingEffectMode,
   type MicLedState,
   type RgbColor,
 } from '../types/controller';
@@ -18,10 +19,19 @@ interface ColorControlsProps {
   onSelectPreset: (presetId: string) => void;
   onTurnOff: () => void;
   onPlayerAndMicChange: (playerLeds: number, micLed: MicLedState) => void;
-  onPreferencesChange: (
-    patch: Partial<Pick<AppConfig, 'apply_on_connect' | 'keep_alive_steam' | 'close_to_tray'>>,
-  ) => void;
+  onPreferencesChange: (patch: Partial<AppConfig>) => void;
+  onEffectModeChange?: (mode: LightingEffectMode) => void;
 }
+
+const EFFECT_MODES: { id: LightingEffectMode; label: string }[] = [
+  { id: 'static', label: 'Estático' },
+  { id: 'breathing', label: 'Breathing' },
+  { id: 'spectrum', label: 'Spectrum' },
+  { id: 'battery_smart', label: 'Batería' },
+  { id: 'input_reactive', label: 'Reactivo' },
+  { id: 'audio_beat', label: 'Audio' },
+  { id: 'screen_ambilight', label: 'Ambilight' },
+];
 
 const MIC_OPTIONS: { value: MicLedState; label: string }[] = [
   { value: 'off', label: 'Off' },
@@ -37,6 +47,7 @@ export function ColorControls({
   onTurnOff,
   onPlayerAndMicChange,
   onPreferencesChange,
+  onEffectModeChange,
 }: ColorControlsProps) {
   const [hsv, setHsv] = useState(() => rgbToHsv(config.color));
   const [hexDraft, setHexDraft] = useState(() => rgbToHex(config.color));
@@ -313,6 +324,33 @@ export function ColorControls({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Dynamic Effects Mode Strip */}
+      <div
+        className="flex flex-wrap items-center gap-1 rounded-xl border border-white/[0.06] bg-slate-950/20 p-1 backdrop-blur-sm"
+        role="group"
+        aria-label="Modo de efecto dinámico"
+      >
+        {EFFECT_MODES.map((mode) => {
+          const active = config.effect_mode === mode.id;
+          return (
+            <button
+              key={mode.id}
+              type="button"
+              aria-pressed={active}
+              data-testid={`effect-mode-${mode.id}`}
+              onClick={() => onEffectModeChange?.(mode.id)}
+              className={`flex-1 rounded-lg px-1.5 py-1 text-[10px] font-medium whitespace-nowrap transition-all ${
+                active
+                  ? 'border border-cyan-400/40 bg-cyan-400/18 text-cyan-100 shadow-[0_0_10px_rgba(0,229,255,0.18)]'
+                  : 'border border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-slate-200'
+              }`}
+            >
+              {mode.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Behavior Preferences Pills */}

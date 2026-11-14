@@ -28,5 +28,22 @@ describe('App integration', () => {
     expect(screen.getByTestId('terms-modal')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('terms-accept-btn'));
     expect(screen.queryByTestId('terms-modal')).not.toBeInTheDocument();
+
+    // Selecting a dynamic lighting effect mode updates active pressed state
+    const spectrumBtn = screen.getByTestId('effect-mode-spectrum');
+    fireEvent.click(spectrumBtn);
+    expect(spectrumBtn).toHaveAttribute('aria-pressed', 'true');
+
+    // Switching to Diagnóstico & Pro reveals telemetry, adaptive triggers, and Pro switches
+    fireEvent.click(screen.getByTestId('tab-diagnostics'));
+    expect(screen.getByTestId('diagnostics-panel')).toBeInTheDocument();
+
+    const r2WeaponBtn = screen.getByTestId('trigger-right-weapon_click');
+    fireEvent.click(r2WeaponBtn);
+    expect(r2WeaponBtn).toHaveAttribute('aria-pressed', 'true');
+
+    const batteryBarBtn = screen.getByTestId('toggle-battery-bar');
+    fireEvent.click(batteryBarBtn);
+    expect(batteryBarBtn).toHaveAttribute('aria-pressed', 'true');
   });
 });

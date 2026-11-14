@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { AlertCircle, X } from 'lucide-react';
+import { AlertCircle, Sliders, Sparkles, X } from 'lucide-react';
 import { ColorControls } from './components/ColorControls';
+import { DiagnosticsPanel } from './components/DiagnosticsPanel';
 import { DualSensePreview } from './components/DualSensePreview';
 import { TermsModal } from './components/TermsModal';
 import { TitleBar } from './components/TitleBar';
@@ -32,11 +33,16 @@ export function App() {
     turnOffLightbar,
     updatePlayerAndMic,
     updatePreferences,
+    updateEffectMode,
+    updateAdaptiveTriggers,
+    exportProfileJson,
+    importProfileJson,
     resyncController,
     resetToDefaults,
   } = useController();
 
   const [isTermsOpen, setIsTermsOpen] = useState<boolean>(shouldOpenTermsOnLaunch);
+  const [activeTab, setActiveTab] = useState<'lighting' | 'diagnostics'>('lighting');
 
   const handleAcceptTerms = () => {
     try {
@@ -57,7 +63,45 @@ export function App() {
         onResync={() => void resyncController()}
       />
 
-      <div className="flex flex-1 flex-col justify-between px-3.5 pt-1.5 pb-3">
+      <div className="flex flex-1 flex-col justify-between overflow-y-auto px-3.5 pt-1.5 pb-3">
+        {/* Dual-Mode Suite Switcher */}
+        <div
+          role="tablist"
+          aria-label="Secciones de SenseHue"
+          className="mb-1.5 grid grid-cols-2 gap-1.5 rounded-xl border border-white/[0.07] bg-slate-950/25 p-1 backdrop-blur-md"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'lighting'}
+            data-testid="tab-lighting"
+            onClick={() => setActiveTab('lighting')}
+            className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-1 text-[11px] font-medium transition-all ${
+              activeTab === 'lighting'
+                ? 'bg-white/14 text-white shadow-[0_0_12px_rgba(0,229,255,0.16)]'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Sparkles className="h-3 w-3 text-cyan-400" aria-hidden="true" />
+            Iluminación & Efectos
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'diagnostics'}
+            data-testid="tab-diagnostics"
+            onClick={() => setActiveTab('diagnostics')}
+            className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-1 text-[11px] font-medium transition-all ${
+              activeTab === 'diagnostics'
+                ? 'bg-white/14 text-white shadow-[0_0_12px_rgba(168,85,247,0.18)]'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Sliders className="h-3 w-3 text-violet-400" aria-hidden="true" />
+            Diagnóstico & Pro
+          </button>
+        </div>
+
         {/* Hero Controller Visualizer */}
         <div className="relative flex flex-1 flex-col items-center justify-center">
           <DualSensePreview
@@ -95,16 +139,28 @@ export function App() {
           </div>
         )}
 
-        {/* Controls Dock */}
-        <ColorControls
-          config={config}
-          presets={presets}
-          onColorChange={updateColor}
-          onSelectPreset={(id) => void applyPreset(id)}
-          onTurnOff={() => void turnOffLightbar()}
-          onPlayerAndMicChange={(leds, mic) => void updatePlayerAndMic(leds, mic)}
-          onPreferencesChange={(patch) => void updatePreferences(patch)}
-        />
+        {/* Active Suite Panel */}
+        {activeTab === 'lighting' ? (
+          <ColorControls
+            config={config}
+            presets={presets}
+            onColorChange={updateColor}
+            onSelectPreset={(id) => void applyPreset(id)}
+            onTurnOff={() => void turnOffLightbar()}
+            onPlayerAndMicChange={(leds, mic) => void updatePlayerAndMic(leds, mic)}
+            onPreferencesChange={(patch) => void updatePreferences(patch)}
+            onEffectModeChange={(mode) => void updateEffectMode(mode)}
+          />
+        ) : (
+          <DiagnosticsPanel
+            status={status}
+            config={config}
+            onPreferencesChange={(patch) => void updatePreferences(patch)}
+            onTriggersChange={(left, right) => void updateAdaptiveTriggers(left, right)}
+            onExportProfile={exportProfileJson}
+            onImportProfile={importProfileJson}
+          />
+        )}
       </div>
 
       <TermsModal

@@ -6,9 +6,12 @@ use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, warn};
 
+use crate::automation::game_watcher::{GameMatch, GameProfileRule};
+use crate::effects::LightingEffectMode;
 use crate::error::{AppError, AppResult};
 use crate::hid::color::{MicLedState, RgbColor};
 use crate::hid::protocol::DualSenseOutputState;
+use crate::hid::triggers::{battery_to_player_led_count, TriggerPreset};
 
 const CONFIG_FILE_NAME: &str = "config.json";
 
@@ -24,6 +27,39 @@ pub struct AppConfig {
     pub apply_on_connect: bool,
     pub keep_alive_steam: bool,
     pub close_to_tray: bool,
+    pub effect_mode: LightingEffectMode,
+    pub battery_bar_leds: bool,
+    pub sync_all_controllers: bool,
+    pub left_trigger: TriggerPreset,
+    pub right_trigger: TriggerPreset,
+    pub local_api_enabled: bool,
+    pub game_profiles: Vec<GameProfileRule>,
+}
+
+fn default_game_profiles() -> Vec<GameProfileRule> {
+    vec![
+        GameProfileRule {
+            id: "cyberpunk-2077".to_string(),
+            name: "Cyberpunk 2077".to_string(),
+            matcher: GameMatch::ProcessName("Cyberpunk2077.exe".to_string()),
+            preset_id: "cyber-yellow".to_string(),
+            effect_mode: LightingEffectMode::AudioBeat,
+        },
+        GameProfileRule {
+            id: "elden-ring".to_string(),
+            name: "Elden Ring".to_string(),
+            matcher: GameMatch::ProcessName("eldenring.exe".to_string()),
+            preset_id: "amber-gold".to_string(),
+            effect_mode: LightingEffectMode::Breathing,
+        },
+        GameProfileRule {
+            id: "alan-wake-2".to_string(),
+            name: "Alan Wake 2".to_string(),
+            matcher: GameMatch::ProcessName("AlanWake2.exe".to_string()),
+            preset_id: "crimson-pulse".to_string(),
+            effect_mode: LightingEffectMode::InputReactive,
+        },
+    ]
 }
 
 impl Default for AppConfig {
@@ -37,6 +73,13 @@ impl Default for AppConfig {
             apply_on_connect: true,
             keep_alive_steam: false,
             close_to_tray: true,
+            effect_mode: LightingEffectMode::Static,
+            battery_bar_leds: false,
+            sync_all_controllers: true,
+            left_trigger: TriggerPreset::Off,
+            right_trigger: TriggerPreset::Off,
+            local_api_enabled: false,
+            game_profiles: default_game_profiles(),
         }
     }
 }
@@ -53,11 +96,27 @@ impl AppConfig {
     /// Converts persisted settings into the hardware report state expected by HID reports.
     #[must_use]
     pub fn to_output_state(&self) -> DualSenseOutputState {
+        self.to_output_state_with_battery(None)
+    }
+
+    /// Converts persisted settings into HID output state, optionally mapping battery % onto the 5 player LEDs.
+    #[must_use]
+    pub fn to_output_state_with_battery(
+        &self,
+        battery_percent: Option<u8>,
+    ) -> DualSenseOutputState {
+        let player_leds = match (self.battery_bar_leds, battery_percent) {
+            (true, Some(pct)) => battery_to_player_led_count(pct),
+            _ => self.player_leds.min(5),
+        };
+
         DualSenseOutputState {
             color: self.color,
             brightness: self.brightness.min(100),
-            player_leds: self.player_leds.min(5),
+            player_leds,
             mic_led: self.mic_led,
+            left_trigger: self.left_trigger,
+            right_trigger: self.right_trigger,
         }
     }
 
@@ -198,6 +257,7 @@ mod tests {
             apply_on_connect: true,
             keep_alive_steam: true,
             close_to_tray: false,
+            ..Default::default()
         };
 
         cfg.save_to_path(&path).expect("atomic save succeeds");

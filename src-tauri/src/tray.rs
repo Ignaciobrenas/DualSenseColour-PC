@@ -92,7 +92,10 @@ pub fn format_tray_status(status: &ConnectionStatus) -> String {
         None => "HID",
     };
 
-    format!("Estado: {model} ({link})")
+    match status.battery_percent {
+        Some(pct) => format!("Estado: {model} ({link}) · {pct}%"),
+        None => format!("Estado: {model} ({link})"),
+    }
 }
 
 /// Formats the active color and brightness line shown inside the tray header.
@@ -611,8 +614,21 @@ mod tests {
             model: Some(DeviceModel::DualSense),
             serial_number: None,
             product_name: None,
+            ..Default::default()
         };
         assert_eq!(format_tray_status(&usb_status), "Estado: DualSense (USB)");
+
+        let bt_battery_status = ConnectionStatus {
+            connected: true,
+            transport: Some(TransportType::Bluetooth),
+            model: Some(DeviceModel::DualSense),
+            battery_percent: Some(80),
+            ..Default::default()
+        };
+        assert_eq!(
+            format_tray_status(&bt_battery_status),
+            "Estado: DualSense (Bluetooth) · 80%"
+        );
 
         let cfg = AppConfig {
             color: RgbColor::new(0, 240, 255),
