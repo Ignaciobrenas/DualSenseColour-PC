@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Fondo obsidiana profundo con sutil profundidad radial -->
+    <radialGradient id="bgGrad" cx="50%" cy="32%" r="76%">
+      <stop offset="0%" stop-color="#1A1F2E"/>
+      <stop offset="55%" stop-color="#0D1018"/>
+      <stop offset="100%" stop-color="#06070B"/>
+    </radialGradient>
+
+    <!-- Brillo especular cristalino superior izquierdo -->
+    <linearGradient id="glassSheen" x1="0%" y1="0%" x2="85%" y2="85%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.14"/>
+      <stop offset="28%" stop-color="#FFFFFF" stop-opacity="0.03"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Borde especular prismático del squircle -->
+    <linearGradient id="rimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#64F3FF" stop-opacity="0.45"/>
+      <stop offset="35%" stop-color="#FFFFFF" stop-opacity="0.18"/>
+      <stop offset="70%" stop-color="#7C5CFF" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#FF2A85" stop-opacity="0.40"/>
+    </linearGradient>
+
+    <!-- Luz ambiental proyectada por la barra LED -->
+    <radialGradient id="glowCyan" cx="33%" cy="46%" r="40%">
+      <stop offset="0%" stop-color="#00F0FF" stop-opacity="0.34"/>
+      <stop offset="100%" stop-color="#00F0FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowViolet" cx="50%" cy="42%" r="36%">
+      <stop offset="0%" stop-color="#6B5BFF" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#6B5BFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowMagenta" cx="67%" cy="46%" r="40%">
+      <stop offset="0%" stop-color="#FF2A85" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#FF2A85" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Carcasa blanco titanio satinado -->
+    <linearGradient id="shellGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="52%" stop-color="#EDF1F7"/>
+      <stop offset="100%" stop-color="#CFD6E3"/>
+    </linearGradient>
+
+    <!-- Zona inferior negro mate -->
+    <linearGradient id="trimGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#222633"/>
+      <stop offset="100%" stop-color="#101219"/>
+    </linearGradient>
+
+    <!-- Touchpad cristal ahumado con reflejo -->
+    <linearGradient id="touchpadGrad" x1="15%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" stop-color="#272D3D"/>
+      <stop offset="45%" stop-color="#181C26"/>
+      <stop offset="100%" stop-color="#0E1016"/>
+    </linearGradient>
+
+    <!-- Sticks analógicos minimalistas con anillo metálico -->
+    <radialGradient id="stickCap" cx="42%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#3A4154"/>
+      <stop offset="70%" stop-color="#1D212B"/>
+      <stop offset="100%" stop-color="#11131A"/>
+    </radialGradient>
+
+    <!-- Espectro LED continuo DualSenseColour (Cian -> Índigo -> Magenta) -->
+    <linearGradient id="ledSpectrum" gradientUnits="userSpaceOnUse" x1="168" y1="150" x2="344" y2="215">
+      <stop offset="0%" stop-color="#00F5FF"/>
+      <stop offset="50%" stop-color="#7B61FF"/>
+      <stop offset="100%" stop-color="#FF2A85"/>
+    </linearGradient>
+
+    <!-- Halo exterior LED más intenso -->
+    <filter id="ledGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="8" result="blurWide"/>
+      <feGaussianBlur stdDeviation="2.5" result="blurTight"/>
+      <feMerge>
+        <feMergeNode in="blurWide"/>
+        <feMergeNode in="blurTight"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Sombra suave del mando -->
+    <filter id="controllerShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#000000" flood-opacity="0.72"/>
+    </filter>
+
+    <!-- Silueta exacta del DualSense para recorte -->
+    <clipPath id="bodyClip">
+      <path d="M 256 144 L 354 144 C 386 144 408 160 420 194 C 436 240 446 300 436 338 C 428 366 396 372 378 350 C 358 326 346 294 324 284 C 302 276 280 278 256 278 C 232 278 210 276 188 284 C 166 294 154 326 134 350 C 116 372 84 366 76 338 C 66 300 76 240 92 194 C 104 160 126 144 158 144 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- Contenedor Squircle Glassmorphic -->
+  <rect width="512" height="512" rx="114" fill="url(#bgGrad)"/>
+  <rect width="512" height="512" rx="114" fill="url(#glowCyan)"/>
+  <rect width="512" height="512" rx="114" fill="url(#glowViolet)"/>
+  <rect width="512" height="512" rx="114" fill="url(#glowMagenta)"/>
+  <rect width="512" height="512" rx="114" fill="url(#glassSheen)"/>
+  <rect x="2" y="2" width="508" height="508" rx="112" fill="none" stroke="url(#rimGrad)" stroke-width="2.5"/>
+
+  <!-- Mando DualSense minimalista centrado -->
+  <g filter="url(#controllerShadow)">
+    <!-- Gatillos L1/R1 sutiles -->
+    <path d="M 118 148 Q 138 134 166 138 L 166 146 L 118 148 Z" fill="#1C202B"/>
+    <path d="M 394 148 Q 374 134 346 138 L 346 146 L 394 148 Z" fill="#1C202B"/>
+
+    <!-- Cuerpo principal -->
+    <path d="M 256 144 L 354 144 C 386 144 408 160 420 194 C 436 240 446 300 436 338 C 428 366 396 372 378 350 C 358 326 346 294 324 284 C 302 276 280 278 256 278 C 232 278 210 276 188 284 C 166 294 154 326 134 350 C 116 372 84 366 76 338 C 66 300 76 240 92 194 C 104 160 126 144 158 144 Z" fill="url(#shellGrad)"/>
+
+    <!-- Sección central inferior oscura -->
+    <g clip-path="url(#bodyClip)">
+      <path d="M 148 238 C 158 216 178 214 202 214 L 310 214 C 334 214 354 216 364 238 C 376 266 378 320 368 365 L 144 365 C 134 320 136 266 148 238 Z" fill="url(#trimGrad)"/>
+      <!-- Línea bisel superior sutil -->
+      <path d="M 88 150 L 424 150" stroke="#FFFFFF" stroke-opacity="0.65" stroke-width="1.5"/>
+    </g>
+
+    <!-- Touchpad -->
+    <path d="M 176 144 L 336 144 L 323 204 C 321 210 315 214 309 214 L 203 214 C 197 214 191 210 189 204 Z" fill="url(#touchpadGrad)"/>
+    <path d="M 183 148 L 329 148" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="1"/>
+
+    <!-- Micro detalles D-Pad y botones (estilo minimalista hardware) -->
+    <g fill="#C8D0DF" opacity="0.88">
+      <!-- D-pad -->
+      <rect x="131" y="180" width="12" height="32" rx="3"/>
+      <rect x="121" y="190" width="32" height="12" rx="3"/>
+      <!-- Botones acción con sutiles acentos cromáticos -->
+      <circle cx="375" cy="179" r="5.5" fill="#B8C2D4"/>
+      <circle cx="375" cy="211" r="5.5" fill="#B8C2D4"/>
+      <circle cx="359" cy="195" r="5.5" fill="#B8C2D4"/>
+      <circle cx="391" cy="195" r="5.5" fill="#B8C2D4"/>
+    </g>
+
+    <!-- Barras de luz LED RGB (núcleo + halo) -->
+    <g filter="url(#ledGlow)" fill="none" stroke-linecap="round">
+      <!-- Barra izquierda -->
+      <path d="M 174 149 L 187 204 Q 190 213 200 215" stroke="url(#ledSpectrum)" stroke-width="9"/>
+      <path d="M 174 149 L 187 204 Q 190 213 200 215" stroke="#FFFFFF" stroke-width="2.2" stroke-opacity="0.85"/>
+
+      <!-- Barra derecha -->
+      <path d="M 338 149 L 325 204 Q 322 213 312 215" stroke="url(#ledSpectrum)" stroke-width="9"/>
+      <path d="M 338 149 L 325 204 Q 322 213 312 215" stroke="#FFFFFF" stroke-width="2.2" stroke-opacity="0.85"/>
+
+      <!-- Indicador LED jugador + micrófono -->
+      <line x1="244" y1="223" x2="268" y2="223" stroke="url(#ledSpectrum)" stroke-width="3.5"/>
+      <line x1="251" y1="258" x2="261" y2="258" stroke="#FF8A3D" stroke-width="2.2" stroke-opacity="0.85"/>
+    </g>
+
+    <!-- Joysticks geométricos con anillo satinado -->
+    <g>
+      <circle cx="202" cy="248" r="21" fill="#0B0D12"/>
+      <circle cx="202" cy="248" r="16.5" fill="url(#stickCap)" stroke="#495268" stroke-width="1.2"/>
+      <circle cx="202" cy="248" r="11" fill="none" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="1"/>
+
+      <circle cx="310" cy="248" r="21" fill="#0B0D12"/>
+      <circle cx="310" cy="248" r="16.5" fill="url(#stickCap)" stroke="#495268" stroke-width="1.2"/>
+      <circle cx="310" cy="248" r="11" fill="none" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="1"/>
+    </g>
+  </g>
+</svg>
