@@ -106,6 +106,16 @@ pub fn run() {
     tauri::Builder::default()
         .manage(app_state.clone())
         .setup(move |app| {
+            #[cfg(target_os = "windows")]
+            if let Some(window) = app.get_webview_window("main") {
+                if let Err(err) = window_vibrancy::apply_acrylic(&window, Some((10, 12, 18, 196))) {
+                    warn!(%err, "Acrylic no disponible; intentando Mica");
+                    if let Err(mica_err) = window_vibrancy::apply_mica(&window, Some(true)) {
+                        warn!(%mica_err, "Mica tampoco disponible; manteniendo glassmorphism CSS");
+                    }
+                }
+            }
+
             let tray_state = app_state.clone();
             let tray_handles = tray::build_tray(app.handle(), move |handle, preset_id| {
                 commands::handle_tray_preset(handle, &tray_state, preset_id);
