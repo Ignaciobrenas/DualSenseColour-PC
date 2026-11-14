@@ -1,6 +1,10 @@
 pub mod config;
 pub mod error;
 pub mod hid;
+pub mod tray;
+
+use tauri::{Manager, WindowEvent};
+use tracing::{info, warn};
 
 #[cfg(all(target_os = "windows", target_env = "gnu"))]
 #[allow(non_snake_case, non_upper_case_globals)]
@@ -93,7 +97,29 @@ pub fn run() {
         )
         .init();
 
+    let initial_config = config::AppConfig::load_default().unwrap_or_default();
+    let close_to_tray = initial_config.close_to_tray;
+
     tauri::Builder::default()
+        .setup(|app| {
+            let tray_handles = tray::build_tray(app.handle(), |_app, preset_id| {
+                info!(
+                    preset_id,
+                    "Preset seleccionado desde la bandeja del sistema"
+                );
+            })?;
+            app.manage(tray_handles);
+            Ok(())
+        })
+        .on_window_event(move |window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    tray::handle_close_requested(window, api, close_to_tray);
+                } else {
+                    warn!(label = window.label(), "Cerrando ventana secundaria");
+                }
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running DualSenseColour PC");
 }
