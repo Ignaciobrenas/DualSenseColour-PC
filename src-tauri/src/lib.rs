@@ -1,10 +1,11 @@
+pub mod commands;
 pub mod config;
 pub mod error;
 pub mod hid;
 pub mod tray;
 
 use tauri::{Manager, WindowEvent};
-use tracing::{info, warn};
+use tracing::warn;
 
 #[cfg(all(target_os = "windows", target_env = "gnu"))]
 #[allow(non_snake_case, non_upper_case_globals)]
@@ -97,29 +98,46 @@ pub fn run() {
         )
         .init();
 
-    let initial_config = config::AppConfig::load_default().unwrap_or_default();
-    let close_to_tray = initial_config.close_to_tray;
+    let config_path = config::AppConfig::default_config_path()
+        .unwrap_or_else(|_| std::env::temp_dir().join("dualsensecolour-config.json"));
+    let initial_config = config::AppConfig::load_from_path(&config_path).unwrap_or_default();
+    let app_state = commands::AppState::new(initial_config, config_path);
 
     tauri::Builder::default()
-        .setup(|app| {
-            let tray_handles = tray::build_tray(app.handle(), |_app, preset_id| {
-                info!(
-                    preset_id,
-                    "Preset seleccionado desde la bandeja del sistema"
-                );
+        .manage(app_state.clone())
+        .setup(move |app| {
+            let tray_state = app_state.clone();
+            let tray_handles = tray::build_tray(app.handle(), move |handle, preset_id| {
+                commands::handle_tray_preset(handle, &tray_state, preset_id);
             })?;
             app.manage(tray_handles);
+
+            commands::spawn_hotplug_monitor(app.handle().clone(), app_state.clone());
             Ok(())
         })
-        .on_window_event(move |window, event| {
+        .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
+                    let close_to_tray = window
+                        .app_handle()
+                        .try_state::<commands::AppState>()
+                        .is_none_or(|state| state.should_close_to_tray());
                     tray::handle_close_requested(window, api, close_to_tray);
                 } else {
                     warn!(label = window.label(), "Cerrando ventana secundaria");
                 }
             }
         })
+        .invoke_handler(tauri::generate_handler![
+            commands::set_lightbar_color,
+            commands::set_player_leds,
+            commands::apply_preset,
+            commands::turn_off_lightbar,
+            commands::get_controller_status,
+            commands::get_config,
+            commands::save_config,
+            commands::get_presets,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running DualSenseColour PC");
 }
