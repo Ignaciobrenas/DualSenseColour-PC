@@ -487,7 +487,7 @@ mod tests {
         usb_input[4] = 128;
         usb_input[5] = 0;
         usb_input[6] = 0;
-        usb_input[53] = 0x17; // charging state 1 (charging), level 7 -> 70%
+        usb_input[53] = 0x17; // charging state 1 (charging), level 7 -> 75%
         transport.set_mock_input_report(usb_input.to_vec());
 
         let mut monitor = ControllerMonitor::new(
@@ -504,7 +504,7 @@ mod tests {
 
         let status = monitor.status();
         assert_eq!(status.connected_count, 2);
-        assert_eq!(status.battery_percent, Some(70));
+        assert_eq!(status.battery_percent, Some(75));
         assert_eq!(status.charging_state, Some(ChargingState::Charging));
         assert!(status.telemetry.is_some());
 

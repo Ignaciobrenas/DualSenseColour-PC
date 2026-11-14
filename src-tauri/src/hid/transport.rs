@@ -223,18 +223,35 @@ impl HidTransport for RealHidTransport {
     fn read_input_report(&self, path: &str, buf: &mut [u8]) -> AppResult<usize> {
         let api = HidApi::new().map_err(|e| Self::map_hid_error(&e))?;
         let device = Self::open_device_by_path(&api, path)?;
-        let len = device
+        let mut len = device
             .read_timeout(buf, 65)
             .map_err(|e| Self::map_hid_error(&e))?;
         if len > 0 && len < 54 && buf.first() == Some(&0x01) {
             let mut feature_05 = [0u8; 64];
             feature_05[0] = 0x05;
             if device.get_feature_report(&mut feature_05).is_ok() {
-                return device
+                len = device
                     .read_timeout(buf, 65)
-                    .map_err(|e| Self::map_hid_error(&e));
+                    .map_err(|e| Self::map_hid_error(&e))?;
             }
         }
+
+        if len > 54 && buf.first() == Some(&0x31) && buf[54] == 0x00 {
+            let mut scratch = vec![0u8; buf.len()];
+            for _ in 0..3 {
+                match device.read_timeout(&mut scratch, 35) {
+                    Ok(next_len) if next_len > 54 && scratch.first() == Some(&0x31) => {
+                        buf[..next_len].copy_from_slice(&scratch[..next_len]);
+                        len = next_len;
+                        if buf[54] != 0x00 {
+                            break;
+                        }
+                    }
+                    Ok(_) | Err(_) => break,
+                }
+            }
+        }
+
         Ok(len)
     }
 
