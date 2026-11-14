@@ -155,11 +155,16 @@ fn main() -> ExitCode {
         CliAction::Status => {
             let status = service.status();
             let cfg = service.config();
+            let battery = status
+                .battery_percent
+                .map_or_else(|| "N/D".to_string(), |pct| format!("{pct}%"));
             Ok(format!(
-                "SenseHue Status -> Conectado: {} | Modelo: {:?} | Transporte: {:?} | Color: {} | Brillo: {}%",
+                "SenseHue Status -> Conectado: {} | Modelo: {:?} | Transporte: {:?} | Batería: {} | Carga: {:?} | Color: {} | Brillo: {}%",
                 status.connected,
                 status.model,
                 status.transport,
+                battery,
+                status.charging_state,
                 cfg.color.to_hex(),
                 cfg.brightness
             ))

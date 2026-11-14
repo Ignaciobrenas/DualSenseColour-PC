@@ -8,8 +8,10 @@ import {
   type AppConfig,
   type ColorPreset,
   type ConnectionStatus,
+  type LightingEffectMode,
   type MicLedState,
   type RgbColor,
+  type TriggerPreset,
 } from '../types/controller';
 
 const IPC_THROTTLE_MS = 22; // ~45Hz ceiling prevents Bluetooth HID output queue congestion
@@ -45,7 +47,11 @@ export interface ControllerHook {
   applyPreset: (presetId: string) => Promise<void>;
   turnOffLightbar: () => Promise<void>;
   updatePlayerAndMic: (playerLeds: number, micLed: MicLedState) => Promise<void>;
-  updatePreferences: (patch: Partial<Pick<AppConfig, 'apply_on_connect' | 'keep_alive_steam' | 'close_to_tray'>>) => Promise<void>;
+  updatePreferences: (patch: Partial<AppConfig>) => Promise<void>;
+  updateEffectMode: (mode: LightingEffectMode) => Promise<void>;
+  updateAdaptiveTriggers: (left: TriggerPreset, right: TriggerPreset) => Promise<void>;
+  exportProfileJson: () => Promise<string>;
+  importProfileJson: (json: string) => Promise<void>;
   resyncController: () => Promise<void>;
   resetToDefaults: () => Promise<void>;
 }
@@ -268,9 +274,7 @@ export function useController(): ControllerHook {
   );
 
   const updatePreferences = useCallback(
-    async (
-      patch: Partial<Pick<AppConfig, 'apply_on_connect' | 'keep_alive_steam' | 'close_to_tray'>>,
-    ) => {
+    async (patch: Partial<AppConfig>) => {
       let nextConfig: AppConfig = DEFAULT_CONFIG;
       setConfig((prev) => {
         nextConfig = { ...prev, ...patch };
@@ -291,6 +295,62 @@ export function useController(): ControllerHook {
     },
     [],
   );
+
+  const updateEffectMode = useCallback(async (mode: LightingEffectMode) => {
+    setConfig((prev) => ({ ...prev, effect_mode: mode }));
+    if (!isTauriRuntime()) {
+      return;
+    }
+
+    try {
+      const updated = await invoke<AppConfig>('set_effect_mode', { mode });
+      setConfig(updated);
+      setError(null);
+    } catch (err) {
+      setError(String(err));
+    }
+  }, []);
+
+  const updateAdaptiveTriggers = useCallback(
+    async (left: TriggerPreset, right: TriggerPreset) => {
+      setConfig((prev) => ({ ...prev, left_trigger: left, right_trigger: right }));
+      if (!isTauriRuntime()) {
+        return;
+      }
+
+      try {
+        const updated = await invoke<AppConfig>('set_adaptive_triggers', { left, right });
+        setConfig(updated);
+        setError(null);
+      } catch (err) {
+        setError(String(err));
+      }
+    },
+    [],
+  );
+
+  const exportProfileJson = useCallback(async (): Promise<string> => {
+    if (!isTauriRuntime()) {
+      return JSON.stringify(config, null, 2);
+    }
+    return invoke<string>('export_profile_json');
+  }, [config]);
+
+  const importProfileJson = useCallback(async (json: string) => {
+    try {
+      const parsed = JSON.parse(json) as Partial<AppConfig>;
+      if (!isTauriRuntime()) {
+        setConfig((prev) => ({ ...prev, ...parsed }));
+        setError(null);
+        return;
+      }
+      const updated = await invoke<AppConfig>('import_profile_json', { json });
+      setConfig(updated);
+      setError(null);
+    } catch (err) {
+      setError(String(err));
+    }
+  }, []);
 
   const clearError = useCallback(() => setError(null), []);
 
@@ -338,6 +398,10 @@ export function useController(): ControllerHook {
     turnOffLightbar,
     updatePlayerAndMic,
     updatePreferences,
+    updateEffectMode,
+    updateAdaptiveTriggers,
+    exportProfileJson,
+    importProfileJson,
     resyncController,
     resetToDefaults,
   };

@@ -5,11 +5,17 @@ use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tracing::warn;
 
+use crate::api::local_server::{
+    preset_color_for_id, spawn_local_api_server, LocalApiCommand, LocalApiResponse,
+    DEFAULT_LOCAL_API_ADDR,
+};
 use crate::config::AppConfig;
+use crate::effects::{evaluate_effect_frame, EffectFrameInput, LightingEffectMode};
 use crate::error::{AppError, AppResult};
 use crate::hid::color::{find_preset, ColorPreset, MicLedState, RgbColor, PRESETS};
 use crate::hid::monitor::{ConnectionStatus, ControllerEvent, ControllerMonitor};
 use crate::hid::transport::{HidTransport, RealHidTransport};
+use crate::hid::triggers::TriggerPreset;
 use crate::tray::{toggle_main_window, TrayAction, TrayHandles};
 
 pub const EVENT_CONTROLLER_STATUS: &str = "controller-status-changed";
@@ -33,6 +39,7 @@ impl<T: HidTransport> ControllerService<T> {
             clean.apply_on_connect,
             clean.keep_alive_steam,
         );
+        monitor.set_sync_all_controllers(clean.sync_all_controllers);
         // Perform immediate startup scan so already-connected controllers are active at 0ms.
         let _ = monitor.poll_once();
         Self {
@@ -60,7 +67,10 @@ impl<T: HidTransport> ControllerService<T> {
             self.config.save_to_path(&self.config_path)?;
         }
 
-        let output_state = self.config.to_output_state();
+        self.monitor
+            .set_sync_all_controllers(self.config.sync_all_controllers);
+        let battery = self.monitor.status().battery_percent;
+        let output_state = self.config.to_output_state_with_battery(battery);
         if let Err(err) = self.monitor.apply_output_state(output_state) {
             warn!(%err, "Fallo temporal enviando reporte HID; el estado se reaplicará automáticamente");
             let _ = self.monitor.poll_once();
@@ -147,6 +157,55 @@ impl<T: HidTransport> ControllerService<T> {
         let _ = self.monitor.poll_once();
         let cfg = self.persist_and_sync_state(false)?;
         Ok((self.status(), cfg))
+    }
+
+    /// Updates active dynamic lighting effect mode and immediately applies an initial frame.
+    pub fn set_effect_mode(&mut self, mode: LightingEffectMode) -> AppResult<AppConfig> {
+        self.config.effect_mode = mode;
+        if mode != LightingEffectMode::Static {
+            let status = self.monitor.status();
+            let frame_color = evaluate_effect_frame(
+                mode,
+                &EffectFrameInput {
+                    base_color: self.config.color,
+                    elapsed_secs: 0.25,
+                    battery_percent: status.battery_percent.unwrap_or(100),
+                    trigger_depth: status.telemetry.as_ref().map_or(0, |t| t.r2),
+                    audio_bass_energy: 0.4,
+                    ..EffectFrameInput::default()
+                },
+            );
+            let mut state = self
+                .config
+                .to_output_state_with_battery(status.battery_percent);
+            state.color = frame_color;
+            let _ = self.monitor.apply_output_state(state);
+        }
+        self.persist_and_sync_state(true)
+    }
+
+    /// Programs left (L2) and right (R2) adaptive trigger resistance presets immediately.
+    pub fn set_adaptive_triggers(
+        &mut self,
+        left: TriggerPreset,
+        right: TriggerPreset,
+    ) -> AppResult<AppConfig> {
+        self.config.left_trigger = left;
+        self.config.right_trigger = right;
+        self.persist_and_sync_state(true)
+    }
+
+    /// Exports active `.sensehue` shareable JSON configuration.
+    pub fn export_profile_json(&self) -> AppResult<String> {
+        serde_json::to_string_pretty(&self.config)
+            .map_err(|e| AppError::Config(format!("Error serializando perfil .sensehue: {e}")))
+    }
+
+    /// Validates, sanitizes, and imports a `.sensehue` JSON configuration onto hardware & disk.
+    pub fn import_profile_json(&mut self, raw_json: &str) -> AppResult<AppConfig> {
+        let parsed: AppConfig = serde_json::from_str(raw_json)
+            .map_err(|e| AppError::Config(format!("JSON .sensehue inválido: {e}")))?;
+        self.save_config(parsed)
     }
 
     /// Advances the underlying HID hotplug monitor by one polling cycle.
@@ -283,12 +342,24 @@ pub fn handle_tray_action(app: &AppHandle, state: &AppState, action: TrayAction)
     }
 }
 
-/// Spawns the 1Hz hotplug polling loop that updates tray status and emits webview events.
+/// Spawns the 1Hz hotplug polling & telemetry loop and dynamic effect animator.
 pub fn spawn_hotplug_monitor(app: AppHandle, state: AppState) {
+    let api_enabled = state.snapshot().1.local_api_enabled;
+    if api_enabled {
+        let api_app = app.clone();
+        let api_state = state.clone();
+        spawn_local_api_server(DEFAULT_LOCAL_API_ADDR, move |cmd| {
+            handle_local_api_command(&api_app, &api_state, cmd)
+        });
+    }
+
     tauri::async_runtime::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(1));
+        let mut last_status = state.snapshot().0;
+        let mut tick_secs = 0.0f32;
         loop {
             interval.tick().await;
+            tick_secs += 1.0;
 
             let poll_state = state.clone();
             let poll_result = tokio::task::spawn_blocking(move || {
@@ -305,13 +376,112 @@ pub fn spawn_hotplug_monitor(app: AppHandle, state: AppState) {
                     event,
                     ControllerEvent::Connected(_) | ControllerEvent::Disconnected
                 )
-            });
+            }) || status != last_status;
 
             if status_changed {
+                last_status = status.clone();
                 sync_tray_and_ui(&app, &status, &cfg, false, true);
+            }
+
+            if status.connected && cfg.effect_mode != LightingEffectMode::Static {
+                let frame_color = evaluate_effect_frame(
+                    cfg.effect_mode,
+                    &EffectFrameInput {
+                        base_color: cfg.color,
+                        elapsed_secs: tick_secs,
+                        battery_percent: status.battery_percent.unwrap_or(100),
+                        trigger_depth: status.telemetry.as_ref().map_or(0, |t| t.r2),
+                        audio_bass_energy: 0.45,
+                        ..EffectFrameInput::default()
+                    },
+                );
+                let anim_state = state.clone();
+                let _ = tokio::task::spawn_blocking(move || {
+                    anim_state.with_service(|svc| {
+                        let mut out = svc
+                            .config()
+                            .to_output_state_with_battery(svc.status().battery_percent);
+                        out.color = frame_color;
+                        svc.monitor.apply_output_state(out)
+                    })
+                })
+                .await;
             }
         }
     });
+}
+
+fn handle_local_api_command(
+    app: &AppHandle,
+    state: &AppState,
+    cmd: LocalApiCommand,
+) -> LocalApiResponse {
+    match cmd {
+        LocalApiCommand::GetStatus => {
+            let (status, cfg) = state.snapshot();
+            let json = serde_json::json!({
+                "ok": true,
+                "connected": status.connected,
+                "connected_count": status.connected_count,
+                "battery_percent": status.battery_percent,
+                "color": cfg.color.to_hex(),
+                "brightness": cfg.brightness,
+                "effect_mode": cfg.effect_mode,
+            });
+            LocalApiResponse::ok(json.to_string())
+        }
+        LocalApiCommand::SetPreset(preset_id) => {
+            if let Some(rgb) = preset_color_for_id(&preset_id) {
+                let res = state.with_service(|svc| {
+                    Ok((
+                        svc.status(),
+                        svc.set_lightbar_color(rgb.r, rgb.g, rgb.b, 100, true)?,
+                    ))
+                });
+                if let Ok((status, cfg)) = res {
+                    sync_tray_and_ui(app, &status, &cfg, true, false);
+                    return LocalApiResponse::ok("{\"ok\":true}");
+                }
+            }
+            LocalApiResponse::error(500, "Failed to apply preset")
+        }
+        LocalApiCommand::SetColor(rgb) => {
+            let res = state.with_service(|svc| {
+                let b = svc.config().brightness.max(25);
+                Ok((
+                    svc.status(),
+                    svc.set_lightbar_color(rgb.r, rgb.g, rgb.b, b, true)?,
+                ))
+            });
+            match res {
+                Ok((status, cfg)) => {
+                    sync_tray_and_ui(app, &status, &cfg, true, false);
+                    LocalApiResponse::ok("{\"ok\":true}")
+                }
+                Err(e) => LocalApiResponse::error(500, e.to_string()),
+            }
+        }
+        LocalApiCommand::SetMode(mode) => {
+            let res = state.with_service(|svc| Ok((svc.status(), svc.set_effect_mode(mode)?)));
+            match res {
+                Ok((status, cfg)) => {
+                    sync_tray_and_ui(app, &status, &cfg, true, false);
+                    LocalApiResponse::ok("{\"ok\":true}")
+                }
+                Err(e) => LocalApiResponse::error(500, e.to_string()),
+            }
+        }
+        LocalApiCommand::TurnOff => {
+            let res = state.with_service(|svc| Ok((svc.status(), svc.turn_off_lightbar()?)));
+            match res {
+                Ok((status, cfg)) => {
+                    sync_tray_and_ui(app, &status, &cfg, true, false);
+                    LocalApiResponse::ok("{\"ok\":true}")
+                }
+                Err(e) => LocalApiResponse::error(500, e.to_string()),
+            }
+        }
+    }
 }
 
 /// Updates the DualSense lightbar RGB color and brightness (0..=100).
@@ -403,6 +573,51 @@ pub fn save_config(
 #[must_use]
 pub fn get_presets() -> Vec<ColorPreset> {
     PRESETS.to_vec()
+}
+
+/// Switches the active dynamic lighting effect mode and persists preferences.
+#[tauri::command]
+pub fn set_effect_mode(
+    state: tauri::State<'_, AppState>,
+    app: AppHandle,
+    mode: LightingEffectMode,
+) -> AppResult<AppConfig> {
+    let (status, cfg) = state.with_service(|svc| Ok((svc.status(), svc.set_effect_mode(mode)?)))?;
+    sync_tray_and_ui(&app, &status, &cfg, true, false);
+    Ok(cfg)
+}
+
+/// Applies adaptive trigger presets (`L2` and `R2`) and persists configuration.
+#[tauri::command]
+pub fn set_adaptive_triggers(
+    state: tauri::State<'_, AppState>,
+    app: AppHandle,
+    left: TriggerPreset,
+    right: TriggerPreset,
+) -> AppResult<AppConfig> {
+    let (status, cfg) =
+        state.with_service(|svc| Ok((svc.status(), svc.set_adaptive_triggers(left, right)?)))?;
+    sync_tray_and_ui(&app, &status, &cfg, true, false);
+    Ok(cfg)
+}
+
+/// Serializes the active SenseHue configuration as a shareable `.sensehue` JSON string.
+#[tauri::command]
+pub fn export_profile_json(state: tauri::State<'_, AppState>) -> AppResult<String> {
+    state.with_service(|svc| svc.export_profile_json())
+}
+
+/// Validates and imports a `.sensehue` JSON configuration string.
+#[tauri::command]
+pub fn import_profile_json(
+    state: tauri::State<'_, AppState>,
+    app: AppHandle,
+    json: String,
+) -> AppResult<AppConfig> {
+    let (status, cfg) =
+        state.with_service(|svc| Ok((svc.status(), svc.import_profile_json(&json)?)))?;
+    sync_tray_and_ui(&app, &status, &cfg, true, false);
+    Ok(cfg)
 }
 
 #[cfg(test)]
@@ -505,5 +720,32 @@ mod tests {
 
         let reloaded = AppConfig::load_from_path(&cfg_path).expect("reload fail-safe config");
         assert_eq!(reloaded.color, RgbColor::new(16, 200, 120));
+    }
+
+    #[test]
+    fn service_supports_effect_modes_triggers_and_profile_import_export() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let cfg_path = dir.path().join("config.json");
+        let transport = MockHidTransport::new();
+        transport.set_controllers(vec![attached_usb_controller()]);
+
+        let mut svc = ControllerService::new(transport.clone(), AppConfig::default(), cfg_path);
+        let cfg = svc
+            .set_effect_mode(LightingEffectMode::Spectrum)
+            .expect("effect mode saved");
+        assert_eq!(cfg.effect_mode, LightingEffectMode::Spectrum);
+
+        let cfg = svc
+            .set_adaptive_triggers(TriggerPreset::Rigid, TriggerPreset::WeaponClick)
+            .expect("triggers saved");
+        assert_eq!(cfg.left_trigger, TriggerPreset::Rigid);
+        assert_eq!(cfg.right_trigger, TriggerPreset::WeaponClick);
+
+        let exported = svc.export_profile_json().expect("export succeeds");
+        assert!(exported.contains("\"weapon_click\""));
+
+        let imported = svc.import_profile_json(&exported).expect("import succeeds");
+        assert_eq!(imported.effect_mode, LightingEffectMode::Spectrum);
+        assert_eq!(imported.right_trigger, TriggerPreset::WeaponClick);
     }
 }

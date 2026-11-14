@@ -97,6 +97,11 @@ pub trait HidTransport: Send + Sync {
 
     /// Reads Feature Report `0x05` (or `0x20`) to switch a Bluetooth DualSense into full report mode.
     fn wake_bluetooth_controller(&self, path: &str) -> AppResult<()>;
+
+    /// Performs a fast non-blocking/short-timeout read of an incoming HID Input Report.
+    fn read_input_report(&self, _path: &str, _buf: &mut [u8]) -> AppResult<usize> {
+        Ok(0)
+    }
 }
 
 /// Production [`HidTransport`] backed by `hidapi`.
@@ -114,9 +119,33 @@ impl RealHidTransport {
         let msg = err.to_string();
         let lower = msg.to_ascii_lowercase();
         if lower.contains("permission") || lower.contains("denied") || lower.contains("access") {
-            AppError::PermissionDenied(msg)
+            AppError::PermissionDenied(
+                "Acceso bloqueado temporalmente por el sistema o en modo exclusivo por Steam/un juego."
+                    .to_string(),
+            )
+        } else if lower.contains("not connected")
+            || lower.contains("0x0000048f")
+            || lower.contains("no such device")
+            || lower.contains("disconnected")
+        {
+            AppError::ControllerNotFound
+        } else if lower.contains("open_path") || lower.contains("open_device") {
+            AppError::HidIo(
+                "No se pudo abrir la conexión con el mando. Comprueba que esté encendido o reconéctalo por USB/Bluetooth."
+                    .to_string(),
+            )
+        } else if lower.contains("writefile") || lower.contains("write_error") {
+            AppError::HidIo(
+                "El mando no respondió al comando LED (posible ahorro de energía Bluetooth o conflicto con Steam Input)."
+                    .to_string(),
+            )
+        } else if lower.contains("read_timeout") || lower.contains("readfile") {
+            AppError::HidIo(
+                "El mando no envió datos de telemetría a tiempo. Pulsa cualquier botón para despertarlo."
+                    .to_string(),
+            )
         } else {
-            AppError::HidIo(msg)
+            AppError::HidIo(format!("Fallo temporal USB/Bluetooth ({msg})."))
         }
     }
 
@@ -191,6 +220,24 @@ impl HidTransport for RealHidTransport {
         device.write(report).map_err(|e| Self::map_hid_error(&e))
     }
 
+    fn read_input_report(&self, path: &str, buf: &mut [u8]) -> AppResult<usize> {
+        let api = HidApi::new().map_err(|e| Self::map_hid_error(&e))?;
+        let device = Self::open_device_by_path(&api, path)?;
+        let len = device
+            .read_timeout(buf, 65)
+            .map_err(|e| Self::map_hid_error(&e))?;
+        if len > 0 && len < 54 && buf.first() == Some(&0x01) {
+            let mut feature_05 = [0u8; 64];
+            feature_05[0] = 0x05;
+            if device.get_feature_report(&mut feature_05).is_ok() {
+                return device
+                    .read_timeout(buf, 65)
+                    .map_err(|e| Self::map_hid_error(&e));
+            }
+        }
+        Ok(len)
+    }
+
     fn wake_bluetooth_controller(&self, path: &str) -> AppResult<()> {
         let api = HidApi::new().map_err(|e| Self::map_hid_error(&e))?;
         let device = Self::open_device_by_path(&api, path)?;
@@ -233,6 +280,7 @@ struct MockTransportState {
     controllers: Vec<DetectedController>,
     sent_reports: Vec<RecordedReport>,
     woken_paths: Vec<String>,
+    mock_input_report: Vec<u8>,
     fail_writes: Option<String>,
     fail_enumeration: Option<String>,
 }
@@ -268,6 +316,13 @@ impl MockHidTransport {
     pub fn set_enumeration_error(&self, message: Option<String>) {
         if let Ok(mut guard) = self.state.lock() {
             guard.fail_enumeration = message;
+        }
+    }
+
+    /// Sets the raw HID Input Report bytes returned by subsequent `read_input_report` calls.
+    pub fn set_mock_input_report(&self, report: Vec<u8>) {
+        if let Ok(mut guard) = self.state.lock() {
+            guard.mock_input_report = report;
         }
     }
 
@@ -332,6 +387,21 @@ impl HidTransport for MockHidTransport {
         });
 
         Ok(report.len())
+    }
+
+    fn read_input_report(&self, path: &str, buf: &mut [u8]) -> AppResult<usize> {
+        let guard = self
+            .state
+            .lock()
+            .map_err(|_| AppError::HidIo("Mock mutex poisoned".to_string()))?;
+
+        if !guard.controllers.iter().any(|c| c.path == path) {
+            return Err(AppError::ControllerNotFound);
+        }
+
+        let len = guard.mock_input_report.len().min(buf.len());
+        buf[..len].copy_from_slice(&guard.mock_input_report[..len]);
+        Ok(len)
     }
 
     fn wake_bluetooth_controller(&self, path: &str) -> AppResult<()> {

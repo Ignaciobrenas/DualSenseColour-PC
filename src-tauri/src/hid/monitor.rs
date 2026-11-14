@@ -2,19 +2,28 @@ use tracing::{debug, warn};
 
 use crate::error::{AppError, AppResult};
 
+use super::input_report::{parse_input_report, ChargingState, DualSenseTelemetry};
 use super::protocol::{build_bt_full_report, build_usb_full_report, DualSenseOutputState};
 use super::transport::{DetectedController, DeviceModel, HidTransport, TransportType};
 
 const KEEP_ALIVE_INTERVAL_TICKS: u32 = 5;
 
 /// Snapshot of the active DualSense connection exposed to the UI and system tray.
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 pub struct ConnectionStatus {
     pub connected: bool,
     pub transport: Option<TransportType>,
     pub model: Option<DeviceModel>,
     pub serial_number: Option<String>,
     pub product_name: Option<String>,
+    #[serde(default)]
+    pub battery_percent: Option<u8>,
+    #[serde(default)]
+    pub charging_state: Option<ChargingState>,
+    #[serde(default)]
+    pub telemetry: Option<DualSenseTelemetry>,
+    #[serde(default)]
+    pub connected_count: usize,
 }
 
 impl ConnectionStatus {
@@ -27,12 +36,16 @@ impl ConnectionStatus {
             model: Some(controller.model),
             serial_number: controller.serial_number.clone(),
             product_name: controller.product_name.clone(),
+            battery_percent: None,
+            charging_state: None,
+            telemetry: None,
+            connected_count: 1,
         }
     }
 }
 
 /// High-level lifecycle events emitted by [`ControllerMonitor::poll_once`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ControllerEvent {
     Connected(ConnectionStatus),
     Disconnected,
@@ -44,10 +57,14 @@ pub enum ControllerEvent {
 pub struct ControllerMonitor<T: HidTransport> {
     transport: T,
     active_controller: Option<DetectedController>,
+    secondary_controllers: Vec<DetectedController>,
+    connected_count: usize,
+    last_telemetry: Option<DualSenseTelemetry>,
     output_state: DualSenseOutputState,
     bt_seq: u8,
     apply_on_connect: bool,
     keep_alive_steam: bool,
+    sync_all_controllers: bool,
     ticks_since_keep_alive: u32,
 }
 
@@ -63,10 +80,14 @@ impl<T: HidTransport> ControllerMonitor<T> {
         Self {
             transport,
             active_controller: None,
+            secondary_controllers: Vec::new(),
+            connected_count: 0,
+            last_telemetry: None,
             output_state: initial_state,
             bt_seq: 0,
             apply_on_connect,
             keep_alive_steam,
+            sync_all_controllers: true,
             ticks_since_keep_alive: 0,
         }
     }
@@ -77,18 +98,31 @@ impl<T: HidTransport> ControllerMonitor<T> {
         &self.transport
     }
 
-    /// Returns the current connection snapshot.
+    /// Returns the current connection snapshot enriched with latest battery & stick telemetry.
     #[must_use]
     pub fn status(&self) -> ConnectionStatus {
-        self.active_controller
-            .as_ref()
-            .map_or_else(ConnectionStatus::default, ConnectionStatus::from_detected)
+        let Some(active) = self.active_controller.as_ref() else {
+            return ConnectionStatus::default();
+        };
+        let mut status = ConnectionStatus::from_detected(active);
+        status.connected_count = self.connected_count.max(1);
+        if let Some(telem) = &self.last_telemetry {
+            status.battery_percent = Some(telem.battery_percent);
+            status.charging_state = Some(telem.charging_state);
+            status.telemetry = Some(telem.clone());
+        }
+        status
     }
 
     /// Returns the currently stored desired LED state.
     #[must_use]
     pub const fn output_state(&self) -> DualSenseOutputState {
         self.output_state
+    }
+
+    /// Enables or disables synchronized output writes across 1-4 attached DualSense controllers.
+    pub fn set_sync_all_controllers(&mut self, enabled: bool) {
+        self.sync_all_controllers = enabled;
     }
 
     /// Updates auto-apply and Steam keep-alive behavior without resetting connection state.
@@ -102,7 +136,7 @@ impl<T: HidTransport> ControllerMonitor<T> {
 
     /// Polls the HID transport once, detecting connect/disconnect/switch transitions and errors.
     pub fn poll_once(&mut self) -> Vec<ControllerEvent> {
-        let controllers = match self.transport.enumerate_controllers() {
+        let mut controllers = match self.transport.enumerate_controllers() {
             Ok(list) => list,
             Err(err) => {
                 warn!(%err, "Error enumerando controladores DualSense");
@@ -111,14 +145,17 @@ impl<T: HidTransport> ControllerMonitor<T> {
         };
 
         // Prefer wired USB if both USB and Bluetooth interfaces appear simultaneously.
-        let next = controllers
-            .into_iter()
-            .min_by_key(|controller| match controller.transport {
-                TransportType::Usb => 0,
-                TransportType::Bluetooth => 1,
-            });
+        controllers.sort_by_key(|controller| match controller.transport {
+            TransportType::Usb => 0,
+            TransportType::Bluetooth => 1,
+        });
 
-        let Some(detected) = next else {
+        let total_connected = controllers.len();
+        let mut iter = controllers.into_iter();
+        let Some(detected) = iter.next() else {
+            self.secondary_controllers.clear();
+            self.connected_count = 0;
+            self.last_telemetry = None;
             if self.active_controller.take().is_some() {
                 debug!("Controlador DualSense desconectado");
                 self.ticks_since_keep_alive = 0;
@@ -127,19 +164,41 @@ impl<T: HidTransport> ControllerMonitor<T> {
             return Vec::new();
         };
 
-        if Self::has_connection_changed(self.active_controller.as_ref(), &detected) {
-            let mut events = Vec::new();
-            if detected.transport == TransportType::Bluetooth {
-                if let Err(err) = self.transport.wake_bluetooth_controller(&detected.path) {
-                    warn!(%err, path = %detected.path, "No se pudo despertar el mando Bluetooth");
-                    events.push(ControllerEvent::TransportError(err.to_string()));
+        self.secondary_controllers = iter.collect();
+        self.connected_count = total_connected;
+
+        let connection_changed =
+            Self::has_connection_changed(self.active_controller.as_ref(), &detected);
+        let mut events = Vec::new();
+
+        if detected.transport == TransportType::Bluetooth && connection_changed {
+            if let Err(err) = self.transport.wake_bluetooth_controller(&detected.path) {
+                warn!(%err, path = %detected.path, "No se pudo despertar el mando Bluetooth");
+                events.push(ControllerEvent::TransportError(err.to_string()));
+            }
+        }
+
+        let mut input_buf = [0u8; 547];
+        if let Ok(read_len) = self
+            .transport
+            .read_input_report(&detected.path, &mut input_buf)
+        {
+            if read_len >= 11 {
+                if let Ok(parsed) = parse_input_report(&input_buf[..read_len]) {
+                    let is_dummy_bt_short = detected.transport == TransportType::Bluetooth
+                        && matches!(parsed.charging_state, ChargingState::Unknown(_))
+                        && parsed.battery_percent == 0;
+                    if !is_dummy_bt_short {
+                        self.last_telemetry = Some(parsed);
+                    }
                 }
             }
+        }
 
-            let status = ConnectionStatus::from_detected(&detected);
+        if connection_changed {
             self.active_controller = Some(detected.clone());
             self.ticks_since_keep_alive = 0;
-            events.push(ControllerEvent::Connected(status));
+            events.push(ControllerEvent::Connected(self.status()));
 
             if self.apply_on_connect {
                 let desired = self.output_state;
@@ -214,22 +273,47 @@ impl<T: HidTransport> ControllerMonitor<T> {
         }
     }
 
-    fn send_state_to_controller(
-        &mut self,
+    fn send_single_controller(
+        transport: &T,
+        bt_seq: &mut u8,
         controller: &DetectedController,
         state: &DualSenseOutputState,
     ) -> AppResult<usize> {
         match controller.transport {
             TransportType::Usb => {
                 let report = build_usb_full_report(state);
-                self.transport.send_report(&controller.path, &report)
+                transport.send_report(&controller.path, &report)
             }
             TransportType::Bluetooth => {
-                let report = build_bt_full_report(state, self.bt_seq);
-                self.bt_seq = (self.bt_seq + 1) & 0x0F;
-                self.transport.send_report(&controller.path, &report)
+                let report = build_bt_full_report(state, *bt_seq);
+                *bt_seq = (*bt_seq + 1) & 0x0F;
+                transport.send_report(&controller.path, &report)
             }
         }
+    }
+
+    fn send_state_to_controller(
+        &mut self,
+        controller: &DetectedController,
+        state: &DualSenseOutputState,
+    ) -> AppResult<usize> {
+        let primary_written =
+            Self::send_single_controller(&self.transport, &mut self.bt_seq, controller, state)?;
+
+        if self.sync_all_controllers {
+            for extra in &self.secondary_controllers {
+                if extra.path == controller.path {
+                    continue;
+                }
+                if let Err(err) =
+                    Self::send_single_controller(&self.transport, &mut self.bt_seq, extra, state)
+                {
+                    warn!(%err, path = %extra.path, "Fallo sincronizando mando secundario");
+                }
+            }
+        }
+
+        Ok(primary_written)
     }
 }
 
@@ -270,6 +354,7 @@ mod tests {
             brightness: 100,
             player_leds: 2,
             mic_led: MicLedState::Off,
+            ..DualSenseOutputState::default()
         };
         let mut monitor = ControllerMonitor::new(transport.clone(), initial_state, true, false);
 
@@ -384,5 +469,47 @@ mod tests {
         let events = monitor.poll_once();
         assert_eq!(events, vec![ControllerEvent::ReappliedColor]);
         assert_eq!(transport.sent_reports().len(), 2);
+    }
+
+    #[test]
+    fn poll_once_reads_battery_telemetry_and_syncs_multiple_controllers() {
+        let transport = MockHidTransport::new();
+        let primary = sample_usb_controller();
+        let mut secondary = sample_bt_controller();
+        secondary.path = "bt\\dualsense\\002".to_string();
+        transport.set_controllers(vec![primary, secondary]);
+
+        let mut usb_input = [0u8; 64];
+        usb_input[0] = 0x01;
+        usb_input[1] = 128;
+        usb_input[2] = 128;
+        usb_input[3] = 128;
+        usb_input[4] = 128;
+        usb_input[5] = 0;
+        usb_input[6] = 0;
+        usb_input[53] = 0x17; // charging state 1 (charging), level 7 -> 70%
+        transport.set_mock_input_report(usb_input.to_vec());
+
+        let mut monitor = ControllerMonitor::new(
+            transport.clone(),
+            DualSenseOutputState::default(),
+            true,
+            false,
+        );
+        let events = monitor.poll_once();
+        assert!(matches!(
+            events.first(),
+            Some(ControllerEvent::Connected(_))
+        ));
+
+        let status = monitor.status();
+        assert_eq!(status.connected_count, 2);
+        assert_eq!(status.battery_percent, Some(70));
+        assert_eq!(status.charging_state, Some(ChargingState::Charging));
+        assert!(status.telemetry.is_some());
+
+        // Both primary USB and secondary BT controllers received the output report
+        let sent = transport.sent_reports();
+        assert_eq!(sent.len(), 2);
     }
 }

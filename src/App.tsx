@@ -1,11 +1,20 @@
 import { useState } from 'react';
-import { AlertCircle, X } from 'lucide-react';
+import {
+  AlertCircle,
+  Battery,
+  BatteryCharging,
+  RefreshCw,
+  Sliders,
+  Sparkles,
+  X,
+} from 'lucide-react';
 import { ColorControls } from './components/ColorControls';
+import { DiagnosticsPanel } from './components/DiagnosticsPanel';
 import { DualSensePreview } from './components/DualSensePreview';
 import { TermsModal } from './components/TermsModal';
 import { TitleBar } from './components/TitleBar';
 import { useController } from './hooks/useController';
-import { rgbToHex } from './types/controller';
+import { formatFriendlyError, rgbToHex } from './types/controller';
 
 const TERMS_STORAGE_KEY = 'sensehue_terms_accepted_v2';
 
@@ -32,11 +41,16 @@ export function App() {
     turnOffLightbar,
     updatePlayerAndMic,
     updatePreferences,
+    updateEffectMode,
+    updateAdaptiveTriggers,
+    exportProfileJson,
+    importProfileJson,
     resyncController,
     resetToDefaults,
   } = useController();
 
   const [isTermsOpen, setIsTermsOpen] = useState<boolean>(shouldOpenTermsOnLaunch);
+  const [activeTab, setActiveTab] = useState<'lighting' | 'diagnostics'>('lighting');
 
   const handleAcceptTerms = () => {
     try {
@@ -48,6 +62,19 @@ export function App() {
   };
 
   const activeHex = rgbToHex(config.color);
+  const friendlyError = error ? formatFriendlyError(error) : null;
+  const batteryPercent =
+    typeof status.battery_percent === 'number' ? status.battery_percent : null;
+  const isCharging = status.charging_state === 'charging';
+  const isFullBattery = status.charging_state === 'full';
+  const batteryToneClass =
+    batteryPercent === null
+      ? 'border-white/10 bg-white/[0.04] text-slate-300'
+      : batteryPercent >= 50
+        ? 'border-emerald-400/25 bg-emerald-500/12 text-emerald-300'
+        : batteryPercent >= 20
+          ? 'border-amber-400/25 bg-amber-500/12 text-amber-300'
+          : 'border-rose-400/30 bg-rose-500/15 text-rose-300';
 
   return (
     <main className="glass-shell flex h-screen w-screen flex-col justify-between overflow-hidden rounded-[22px] text-slate-100">
@@ -57,7 +84,45 @@ export function App() {
         onResync={() => void resyncController()}
       />
 
-      <div className="flex flex-1 flex-col justify-between px-3.5 pt-1.5 pb-3">
+      <div className="flex flex-1 flex-col justify-between overflow-y-auto px-3.5 pt-1.5 pb-3">
+        {/* Dual-Mode Suite Switcher */}
+        <div
+          role="tablist"
+          aria-label="Secciones de SenseHue"
+          className="mb-1.5 grid grid-cols-2 gap-1.5 rounded-xl border border-white/[0.07] bg-slate-950/25 p-1 backdrop-blur-md"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'lighting'}
+            data-testid="tab-lighting"
+            onClick={() => setActiveTab('lighting')}
+            className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-1 text-[11px] font-medium transition-all ${
+              activeTab === 'lighting'
+                ? 'bg-white/14 text-white shadow-[0_0_12px_rgba(0,229,255,0.16)]'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Sparkles className="h-3 w-3 text-cyan-400" aria-hidden="true" />
+            Iluminación & Efectos
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'diagnostics'}
+            data-testid="tab-diagnostics"
+            onClick={() => setActiveTab('diagnostics')}
+            className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-1 text-[11px] font-medium transition-all ${
+              activeTab === 'diagnostics'
+                ? 'bg-white/14 text-white shadow-[0_0_12px_rgba(168,85,247,0.18)]'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Sliders className="h-3 w-3 text-violet-400" aria-hidden="true" />
+            Diagnóstico & Pro
+          </button>
+        </div>
+
         {/* Hero Controller Visualizer */}
         <div className="relative flex flex-1 flex-col items-center justify-center">
           <DualSensePreview
@@ -72,39 +137,87 @@ export function App() {
           <p className="font-mono-tabular -mt-1 text-[11px] tracking-wider text-slate-400">
             LIGHTBAR · <span className="text-slate-200">{activeHex}</span> · {config.brightness}%
           </p>
+          {status.connected && (
+            <div
+              data-testid="hero-battery-readout"
+              className={`font-mono-tabular mt-1 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${batteryToneClass}`}
+            >
+              {isCharging ? (
+                <BatteryCharging className="h-3 w-3 shrink-0" aria-hidden="true" />
+              ) : (
+                <Battery className="h-3 w-3 shrink-0" aria-hidden="true" />
+              )}
+              <span>
+                Batería{' '}
+                {batteryPercent !== null
+                  ? `${batteryPercent}%${isCharging ? ' · Cargando' : isFullBattery ? ' · Completa' : ''}`
+                  : '· Leyendo...'}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Optional HID Warning Toast */}
-        {error && (
+        {/* Friendly HID Warning Toast */}
+        {friendlyError && (
           <div
             role="alert"
-            className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-rose-500/35 bg-rose-500/15 px-3 py-1.5 text-[11px] text-rose-200"
+            data-testid="friendly-error-toast"
+            className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-rose-500/35 bg-rose-950/55 px-3 py-2 text-[11px] text-rose-100 backdrop-blur-md"
           >
-            <span className="inline-flex items-center gap-1.5 truncate">
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              {error}
-            </span>
-            <button
-              type="button"
-              aria-label="Cerrar aviso"
-              onClick={clearError}
-              className="rounded p-0.5 hover:bg-white/10"
-            >
-              <X className="h-3 w-3" aria-hidden="true" />
-            </button>
+            <div className="flex min-w-0 items-start gap-2">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-300" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="font-semibold text-rose-100">{friendlyError.title}</p>
+                <p className="text-[10px] leading-snug text-rose-200/85">{friendlyError.detail}</p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                data-testid="error-retry-btn"
+                onClick={() => {
+                  clearError();
+                  void resyncController();
+                }}
+                className="inline-flex items-center gap-1 rounded-lg border border-rose-300/30 bg-rose-400/15 px-2 py-1 text-[10px] font-medium text-rose-100 transition-colors hover:bg-rose-400/25"
+              >
+                <RefreshCw className="h-3 w-3" aria-hidden="true" />
+                Reintentar
+              </button>
+              <button
+                type="button"
+                aria-label="Cerrar aviso"
+                onClick={clearError}
+                className="rounded p-1 text-rose-200/80 hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-3 w-3" aria-hidden="true" />
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Controls Dock */}
-        <ColorControls
-          config={config}
-          presets={presets}
-          onColorChange={updateColor}
-          onSelectPreset={(id) => void applyPreset(id)}
-          onTurnOff={() => void turnOffLightbar()}
-          onPlayerAndMicChange={(leds, mic) => void updatePlayerAndMic(leds, mic)}
-          onPreferencesChange={(patch) => void updatePreferences(patch)}
-        />
+        {/* Active Suite Panel */}
+        {activeTab === 'lighting' ? (
+          <ColorControls
+            config={config}
+            presets={presets}
+            onColorChange={updateColor}
+            onSelectPreset={(id) => void applyPreset(id)}
+            onTurnOff={() => void turnOffLightbar()}
+            onPlayerAndMicChange={(leds, mic) => void updatePlayerAndMic(leds, mic)}
+            onPreferencesChange={(patch) => void updatePreferences(patch)}
+            onEffectModeChange={(mode) => void updateEffectMode(mode)}
+          />
+        ) : (
+          <DiagnosticsPanel
+            status={status}
+            config={config}
+            onPreferencesChange={(patch) => void updatePreferences(patch)}
+            onTriggersChange={(left, right) => void updateAdaptiveTriggers(left, right)}
+            onExportProfile={exportProfileJson}
+            onImportProfile={importProfileJson}
+          />
+        )}
       </div>
 
       <TermsModal

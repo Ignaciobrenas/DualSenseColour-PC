@@ -1,6 +1,37 @@
 export type TransportType = 'usb' | 'bluetooth';
 export type DeviceModel = 'DualSense' | 'DualSenseEdge';
 export type MicLedState = 'off' | 'on' | 'pulse';
+export type LightingEffectMode =
+  | 'static'
+  | 'breathing'
+  | 'spectrum'
+  | 'battery_smart'
+  | 'input_reactive'
+  | 'audio_beat'
+  | 'screen_ambilight';
+export type TriggerPreset = 'off' | 'rigid' | 'weapon_click' | 'pulse';
+export type ChargingState = 'discharging' | 'charging' | 'full' | { unknown: number };
+
+export interface DualSenseTelemetry {
+  battery_percent: number;
+  charging_state: ChargingState;
+  lx: number;
+  ly: number;
+  rx: number;
+  ry: number;
+  l2: number;
+  r2: number;
+  mute_pressed: boolean;
+  ps_pressed: boolean;
+}
+
+export interface GameProfileRule {
+  id: string;
+  name: string;
+  matcher: { process_name: string } | { steam_app_id: number };
+  preset_id: string;
+  effect_mode: LightingEffectMode;
+}
 
 export interface RgbColor {
   r: number;
@@ -27,6 +58,10 @@ export interface ConnectionStatus {
   model: DeviceModel | null;
   serial_number: string | null;
   product_name: string | null;
+  battery_percent?: number | null;
+  charging_state?: ChargingState | null;
+  telemetry?: DualSenseTelemetry | null;
+  connected_count?: number;
 }
 
 export interface AppConfig {
@@ -38,6 +73,13 @@ export interface AppConfig {
   apply_on_connect: boolean;
   keep_alive_steam: boolean;
   close_to_tray: boolean;
+  effect_mode: LightingEffectMode;
+  battery_bar_leds: boolean;
+  sync_all_controllers: boolean;
+  left_trigger: TriggerPreset;
+  right_trigger: TriggerPreset;
+  local_api_enabled: boolean;
+  game_profiles: GameProfileRule[];
 }
 
 export const BUILTIN_PRESETS: ColorPreset[] = [
@@ -50,6 +92,30 @@ export const BUILTIN_PRESETS: ColorPreset[] = [
   { id: 'off', name: 'Apagado', color: { r: 0, g: 0, b: 0 }, hex: '#000000' },
 ];
 
+export const DEFAULT_GAME_PROFILES: GameProfileRule[] = [
+  {
+    id: 'cyberpunk-2077',
+    name: 'Cyberpunk 2077',
+    matcher: { process_name: 'Cyberpunk2077.exe' },
+    preset_id: 'cyber-yellow',
+    effect_mode: 'audio_beat',
+  },
+  {
+    id: 'elden-ring',
+    name: 'Elden Ring',
+    matcher: { process_name: 'eldenring.exe' },
+    preset_id: 'amber-gold',
+    effect_mode: 'breathing',
+  },
+  {
+    id: 'alan-wake-2',
+    name: 'Alan Wake 2',
+    matcher: { process_name: 'AlanWake2.exe' },
+    preset_id: 'crimson-pulse',
+    effect_mode: 'input_reactive',
+  },
+];
+
 export const DEFAULT_CONFIG: AppConfig = {
   color: { r: 0, g: 67, b: 156 },
   brightness: 100,
@@ -59,6 +125,13 @@ export const DEFAULT_CONFIG: AppConfig = {
   apply_on_connect: true,
   keep_alive_steam: false,
   close_to_tray: true,
+  effect_mode: 'static',
+  battery_bar_leds: false,
+  sync_all_controllers: true,
+  left_trigger: 'off',
+  right_trigger: 'off',
+  local_api_enabled: false,
+  game_profiles: DEFAULT_GAME_PROFILES,
 };
 
 export const DEFAULT_STATUS: ConnectionStatus = {
@@ -67,6 +140,10 @@ export const DEFAULT_STATUS: ConnectionStatus = {
   model: null,
   serial_number: null,
   product_name: null,
+  battery_percent: null,
+  charging_state: null,
+  telemetry: null,
+  connected_count: 0,
 };
 
 export function clampByte(value: number): number {
@@ -153,5 +230,74 @@ export function hsvToRgb({ h, s, v }: HsvColor): RgbColor {
     r: clampByte((rn + m) * 255),
     g: clampByte((gn + m) * 255),
     b: clampByte((bn + m) * 255),
+  };
+}
+
+export interface FriendlyErrorMessage {
+  title: string;
+  detail: string;
+  raw: string;
+}
+
+export function formatFriendlyError(rawError: string): FriendlyErrorMessage {
+  const lower = rawError.toLowerCase();
+
+  if (
+    lower.includes('no se detectó ningún mando') ||
+    lower.includes('not connected') ||
+    lower.includes('0x0000048f') ||
+    lower.includes('no such device') ||
+    lower.includes('controllernotfound')
+  ) {
+    return {
+      title: 'Mando no detectado',
+      detail: 'Conéctalo por USB o Bluetooth, enciéndelo con el botón PS y pulsa Reintentar.',
+      raw: rawError,
+    };
+  }
+
+  if (
+    lower.includes('permisos') ||
+    lower.includes('permission') ||
+    lower.includes('denied') ||
+    lower.includes('access')
+  ) {
+    return {
+      title: 'Acceso bloqueado al mando',
+      detail:
+        'Otro programa (como Steam Input o un juego) usa el mando en exclusiva, o faltan permisos HID.',
+      raw: rawError,
+    };
+  }
+
+  if (
+    lower.includes('writefile') ||
+    lower.includes('no respondió') ||
+    lower.includes('despertar') ||
+    lower.includes('read_timeout') ||
+    lower.includes('telemetría')
+  ) {
+    return {
+      title: 'El mando no respondió a tiempo',
+      detail: 'Si estás por Bluetooth, pulsa cualquier botón para despertarlo y usa Reintentar.',
+      raw: rawError,
+    };
+  }
+
+  if (lower.includes('hexadecimal') || lower.includes('color no válido') || lower.includes('color inválido')) {
+    return {
+      title: 'Color no válido',
+      detail: 'Introduce un código hexadecimal válido como #00E5FF.',
+      raw: rawError,
+    };
+  }
+
+  return {
+    title: 'Problema de conexión con el mando',
+    detail:
+      rawError.trim().length > 0 && !lower.includes('0x')
+        ? rawError
+        : 'Comprueba la conexión USB o Bluetooth del DualSense y pulsa Reintentar.',
+    raw: rawError,
   };
 }

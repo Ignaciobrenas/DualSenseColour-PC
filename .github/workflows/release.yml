@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+env:
+  CARGO_TERM_COLOR: always
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   publish-release:
     name: Build & Publish (${{ matrix.platform }})
@@ -18,14 +22,14 @@ jobs:
         include:
           - platform: windows-latest
             args: ''
-          - platform: ubuntu-22.04
+          - platform: ubuntu-24.04
             args: ''
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Linux Tauri & HID dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-24.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -60,15 +64,31 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           releaseName: 'SenseHue ${{ github.ref_name }}'
-          releaseBody: 'Cross-platform release for Windows (.exe/.msi) and Linux/SteamOS (.AppImage/.deb). See README for udev setup on Linux & SteamOS.'
+          releaseBody: 'Cross-platform release for Windows (.exe/.msi + Portable + CLI) and Linux/SteamOS (.AppImage/.deb + CLI). See README for udev setup on Linux & SteamOS.'
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
 
-      - name: Attach Linux udev rules asset
-        if: matrix.platform == 'ubuntu-22.04' && startsWith(github.ref, 'refs/tags/')
+      - name: Build SenseHue CLI release binary
+        working-directory: src-tauri
+        run: cargo build --release --bin sensehue-cli
+
+      - name: Prepare and upload Windows portable & CLI release assets
+        if: matrix.platform == 'windows-latest' && startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.ref_name }}" packaging/linux/99-sensehue.rules --clobber
+        run: |
+          Copy-Item "src-tauri/target/release/sensehue.exe" "SenseHue-Portable.exe" -Force
+          Copy-Item "src-tauri/target/release/sensehue-cli.exe" "sensehue-cli-windows-x86_64.exe" -Force
+          gh release upload "${{ github.ref_name }}" "SenseHue-Portable.exe" "sensehue-cli-windows-x86_64.exe" --clobber
+
+      - name: Prepare and upload Linux CLI & udev rules assets
+        if: matrix.platform == 'ubuntu-24.04' && startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp src-tauri/target/release/sensehue-cli sensehue-cli-linux-x86_64
+          gh release upload "${{ github.ref_name }}" packaging/linux/99-sensehue.rules sensehue-cli-linux-x86_64 --clobber

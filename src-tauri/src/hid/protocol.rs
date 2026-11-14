@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::color::{MicLedState, RgbColor};
+use super::triggers::{apply_trigger_presets, TriggerPreset};
 
 /// Sony Interactive Entertainment USB/Bluetooth Vendor ID.
 pub const SONY_VID: u16 = 0x054C;
@@ -37,6 +38,10 @@ pub struct DualSenseOutputState {
     pub brightness: u8,
     pub player_leds: u8,
     pub mic_led: MicLedState,
+    #[serde(default)]
+    pub left_trigger: TriggerPreset,
+    #[serde(default)]
+    pub right_trigger: TriggerPreset,
 }
 
 impl Default for DualSenseOutputState {
@@ -46,6 +51,8 @@ impl Default for DualSenseOutputState {
             brightness: 100,
             player_leds: 1,
             mic_led: MicLedState::Off,
+            left_trigger: TriggerPreset::Off,
+            right_trigger: TriggerPreset::Off,
         }
     }
 }
@@ -88,13 +95,17 @@ fn populate_common_payload(
         flags |= VALID_FLAG1_PLAYER_INDICATOR_ENABLE | VALID_FLAG1_MIC_MUTE_LED_ENABLE;
     }
 
-    // valid_flag0 stays 0x00 so haptics / triggers remain untouched.
+    // valid_flag0 stays 0x00 unless adaptive trigger presets are explicitly engaged.
     buf[base_offset] = 0x00;
     buf[base_offset + 1] = flags;
 
     if apply_player_and_mic {
         buf[base_offset + 8] = state.mic_led.as_hid_byte();
         buf[base_offset + 43] = player_count_to_mask(state.player_leds);
+    }
+
+    if state.left_trigger != TriggerPreset::Off || state.right_trigger != TriggerPreset::Off {
+        apply_trigger_presets(buf, base_offset, state.left_trigger, state.right_trigger);
     }
 
     set_lightbar_setup_unlock(buf, base_offset);
@@ -226,6 +237,7 @@ mod tests {
             brightness: 50,
             player_leds: 3,
             mic_led: MicLedState::Pulse,
+            ..DualSenseOutputState::default()
         };
         let report = build_usb_full_report(&state);
 
@@ -293,6 +305,7 @@ mod tests {
                 brightness: 100,
                 player_leds: count,
                 mic_led: MicLedState::On,
+                ..DualSenseOutputState::default()
             };
             let report = build_bt_full_report(&state, 1);
             assert_eq!(report[1], 0x10);

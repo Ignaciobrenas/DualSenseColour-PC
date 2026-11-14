@@ -1,9 +1,15 @@
-import { Bluetooth, Usb, WifiOff } from 'lucide-react';
+import { Battery, BatteryCharging, Bluetooth, Usb, WifiOff } from 'lucide-react';
 import type { ConnectionStatus } from '../types/controller';
 
 interface ConnectionBadgeProps {
   status: ConnectionStatus;
   onResync?: () => void;
+}
+
+function batteryColorClass(percent: number): string {
+  if (percent >= 50) return 'text-emerald-300';
+  if (percent >= 20) return 'text-amber-300';
+  return 'text-rose-400';
 }
 
 export function ConnectionBadge({ status, onResync }: ConnectionBadgeProps) {
@@ -24,6 +30,19 @@ export function ConnectionBadge({ status, onResync }: ConnectionBadgeProps) {
 
   const isUsb = status.transport === 'usb';
   const modelLabel = status.model === 'DualSenseEdge' ? 'Edge' : 'DualSense';
+  const batteryPercent =
+    typeof status.battery_percent === 'number' ? status.battery_percent : null;
+  const isCharging = status.charging_state === 'charging';
+  const isFull = status.charging_state === 'full';
+  const multiCount =
+    typeof status.connected_count === 'number' && status.connected_count > 1
+      ? status.connected_count
+      : null;
+
+  const batteryTitle =
+    batteryPercent !== null
+      ? `Batería del mando: ${batteryPercent}%${isCharging ? ' (Cargando)' : isFull ? ' (Completa)' : ''}`
+      : 'Leyendo nivel de batería del mando...';
 
   return (
     <button
@@ -45,6 +64,25 @@ export function ConnectionBadge({ status, onResync }: ConnectionBadgeProps) {
       <span>
         {modelLabel} · {isUsb ? 'USB' : 'Bluetooth'}
       </span>
+      <span
+        data-testid="battery-badge"
+        title={batteryTitle}
+        className={`font-mono-tabular inline-flex items-center gap-0.5 ${
+          batteryPercent !== null ? batteryColorClass(batteryPercent) : 'text-slate-300/80'
+        }`}
+      >
+        {isCharging ? (
+          <BatteryCharging className="h-3 w-3" aria-hidden="true" />
+        ) : (
+          <Battery className="h-3 w-3" aria-hidden="true" />
+        )}
+        {batteryPercent !== null ? `${batteryPercent}%` : '...'}
+      </span>
+      {multiCount !== null && (
+        <span className="font-mono-tabular rounded bg-white/15 px-1 text-[9px] text-white">
+          ×{multiCount}
+        </span>
+      )}
     </button>
   );
 }

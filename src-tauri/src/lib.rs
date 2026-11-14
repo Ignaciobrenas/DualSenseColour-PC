@@ -1,3 +1,4 @@
+pub mod api;
 pub mod automation;
 pub mod commands;
 pub mod config;
@@ -161,6 +162,10 @@ pub fn run() {
             commands::get_config,
             commands::save_config,
             commands::get_presets,
+            commands::set_effect_mode,
+            commands::set_adaptive_triggers,
+            commands::export_profile_json,
+            commands::import_profile_json,
         ])
         .run(tauri::generate_context!())
         .expect("error while running SenseHue");
