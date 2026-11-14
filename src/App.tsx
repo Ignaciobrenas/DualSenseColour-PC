@@ -1,9 +1,24 @@
+import { useState } from 'react';
 import { AlertCircle, X } from 'lucide-react';
 import { ColorControls } from './components/ColorControls';
 import { DualSensePreview } from './components/DualSensePreview';
+import { TermsModal } from './components/TermsModal';
 import { TitleBar } from './components/TitleBar';
 import { useController } from './hooks/useController';
 import { rgbToHex } from './types/controller';
+
+const TERMS_STORAGE_KEY = 'dualsensecolour_terms_accepted_v1';
+
+function shouldOpenTermsOnLaunch(): boolean {
+  if (typeof window === 'undefined' || !('__TAURI_INTERNALS__' in window)) {
+    return false;
+  }
+  try {
+    return window.localStorage.getItem(TERMS_STORAGE_KEY) !== 'true';
+  } catch {
+    return true;
+  }
+}
 
 export function App() {
   const {
@@ -17,13 +32,30 @@ export function App() {
     turnOffLightbar,
     updatePlayerAndMic,
     updatePreferences,
+    resyncController,
+    resetToDefaults,
   } = useController();
+
+  const [isTermsOpen, setIsTermsOpen] = useState<boolean>(shouldOpenTermsOnLaunch);
+
+  const handleAcceptTerms = () => {
+    try {
+      window.localStorage.setItem(TERMS_STORAGE_KEY, 'true');
+    } catch {
+      // Ignore restricted storage environments
+    }
+    setIsTermsOpen(false);
+  };
 
   const activeHex = rgbToHex(config.color);
 
   return (
     <main className="glass-shell flex h-screen w-screen flex-col justify-between overflow-hidden rounded-[22px] text-slate-100">
-      <TitleBar status={status} />
+      <TitleBar
+        status={status}
+        onOpenTerms={() => setIsTermsOpen(true)}
+        onResync={() => void resyncController()}
+      />
 
       <div className="flex flex-1 flex-col justify-between px-3.5 pt-1.5 pb-3">
         {/* Hero Controller Visualizer */}
@@ -74,6 +106,15 @@ export function App() {
           onPreferencesChange={(patch) => void updatePreferences(patch)}
         />
       </div>
+
+      <TermsModal
+        open={isTermsOpen}
+        status={status}
+        onClose={() => setIsTermsOpen(false)}
+        onAccept={handleAcceptTerms}
+        onResync={() => void resyncController()}
+        onResetDefaults={() => void resetToDefaults()}
+      />
     </main>
   );
 }

@@ -1,4 +1,4 @@
-import { Minus, X } from 'lucide-react';
+import { Minus, ShieldCheck, X } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import iconUrl from '../assets/icon.svg';
 import type { ConnectionStatus } from '../types/controller';
@@ -6,13 +6,15 @@ import { ConnectionBadge } from './ConnectionBadge';
 
 interface TitleBarProps {
   status: ConnectionStatus;
+  onOpenTerms?: () => void;
+  onResync?: () => void;
 }
 
 function isTauriRuntime(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 
-export function TitleBar({ status }: TitleBarProps) {
+export function TitleBar({ status, onOpenTerms, onResync }: TitleBarProps) {
   const handleMinimize = async () => {
     if (!isTauriRuntime()) {
       return;
@@ -47,10 +49,22 @@ export function TitleBar({ status }: TitleBarProps) {
         </h1>
       </div>
 
-      <div data-tauri-drag-region="false" className="flex shrink-0 items-center gap-1.5">
-        <ConnectionBadge status={status} />
+      <div data-tauri-drag-region="false" className="flex shrink-0 items-center gap-1">
+        <ConnectionBadge status={status} onResync={onResync} />
 
         <div className="flex items-center gap-0.5 pl-0.5">
+          {onOpenTerms && (
+            <button
+              type="button"
+              data-testid="open-terms-btn"
+              title="Términos, condiciones y diagnóstico"
+              aria-label="Términos y condiciones y diagnóstico"
+              onClick={onOpenTerms}
+              className="flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/10 hover:text-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          )}
           <button
             type="button"
             aria-label="Minimizar ventana"

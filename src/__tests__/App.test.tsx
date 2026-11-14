@@ -22,5 +22,11 @@ describe('App integration', () => {
     fireEvent.click(screen.getByTestId('turn-off-btn'));
     expect(preview.getAttribute('data-brightness')).toBe('0');
     expect(screen.getByTestId('lightbar-overlay').getAttribute('opacity')).toBe('0');
+
+    // Terms & Conditions modal opens from titlebar button and closes cleanly when accepted
+    fireEvent.click(screen.getByTestId('open-terms-btn'));
+    expect(screen.getByTestId('terms-modal')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('terms-accept-btn'));
+    expect(screen.queryByTestId('terms-modal')).not.toBeInTheDocument();
   });
 });

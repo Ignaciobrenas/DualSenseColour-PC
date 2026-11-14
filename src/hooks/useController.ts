@@ -46,6 +46,8 @@ export interface ControllerHook {
   turnOffLightbar: () => Promise<void>;
   updatePlayerAndMic: (playerLeds: number, micLed: MicLedState) => Promise<void>;
   updatePreferences: (patch: Partial<Pick<AppConfig, 'apply_on_connect' | 'keep_alive_steam' | 'close_to_tray'>>) => Promise<void>;
+  resyncController: () => Promise<void>;
+  resetToDefaults: () => Promise<void>;
 }
 
 export function useController(): ControllerHook {
@@ -292,6 +294,39 @@ export function useController(): ControllerHook {
 
   const clearError = useCallback(() => setError(null), []);
 
+  const resyncController = useCallback(async () => {
+    if (!isTauriRuntime()) {
+      return;
+    }
+
+    try {
+      const [freshStatus, freshConfig] = await Promise.all([
+        invoke<ConnectionStatus>('get_controller_status'),
+        invoke<AppConfig>('save_config', { config }),
+      ]);
+      setStatus(freshStatus);
+      setConfig(freshConfig);
+      setError(null);
+    } catch (err) {
+      setError(String(err));
+    }
+  }, [config]);
+
+  const resetToDefaults = useCallback(async () => {
+    setConfig(DEFAULT_CONFIG);
+    if (!isTauriRuntime()) {
+      return;
+    }
+
+    try {
+      const saved = await invoke<AppConfig>('save_config', { config: DEFAULT_CONFIG });
+      setConfig(saved);
+      setError(null);
+    } catch (err) {
+      setError(String(err));
+    }
+  }, []);
+
   return {
     status,
     config,
@@ -303,5 +338,7 @@ export function useController(): ControllerHook {
     turnOffLightbar,
     updatePlayerAndMic,
     updatePreferences,
+    resyncController,
+    resetToDefaults,
   };
 }

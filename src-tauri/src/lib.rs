@@ -117,10 +117,22 @@ pub fn run() {
             }
 
             let tray_state = app_state.clone();
-            let tray_handles = tray::build_tray(app.handle(), move |handle, preset_id| {
-                commands::handle_tray_preset(handle, &tray_state, preset_id);
-            })?;
-            app.manage(tray_handles);
+            let (initial_status, initial_cfg) = app_state.snapshot();
+            match tray::build_tray(
+                app.handle(),
+                &initial_status,
+                &initial_cfg,
+                move |handle, action| {
+                    commands::handle_tray_action(handle, &tray_state, action);
+                },
+            ) {
+                Ok(tray_handles) => {
+                    app.manage(tray_handles);
+                }
+                Err(err) => {
+                    warn!(%err, "Bandeja del sistema no disponible; continuando solo con ventana principal");
+                }
+            }
 
             commands::spawn_hotplug_monitor(app.handle().clone(), app_state.clone());
             Ok(())
@@ -161,5 +173,10 @@ mod tests {
         let err = AppError::InvalidColor("#ZZZ".to_string());
         let json = serde_json::to_string(&err).expect("error serializes");
         assert!(json.contains("#ZZZ"));
+    }
+
+    #[test]
+    fn custom_protocol_is_enabled_by_default() {
+        assert!(!tauri::is_dev());
     }
 }

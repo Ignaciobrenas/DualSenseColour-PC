@@ -30,8 +30,24 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "Ignacio Breñas",
+    "copyright": "Copyright © 2026 Ignacio Breñas. MIT License.",
+    "license": "MIT",
+    "licenseFile": "../TERMS_AND_CONDITIONS.txt",
     "shortDescription": "Customize PS5 DualSense RGB lightbar, player LEDs, and mic indicator.",
+    "longDescription": "Fast, lightweight native desktop utility to customize your PS5 DualSense & DualSense Edge RGB lightbar, player LEDs, and mic indicator over USB & Bluetooth with zero bloatware.",
     "category": "Utility",
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "both",
+        "languages": ["Spanish", "English"],
+        "displayLanguageSelector": true
+      }
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
