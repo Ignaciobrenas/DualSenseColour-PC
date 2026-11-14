@@ -163,7 +163,8 @@ pub fn parse_input_report(data: &[u8]) -> AppResult<DualSenseTelemetry> {
             let battery_percent = if charging_state == ChargingState::Full {
                 100
             } else {
-                battery_raw.min(10) * 10
+                // Sony hid-playstation.c formula: 0 = 0-9% -> 5%, ..., 10 = 100%
+                (battery_raw.min(10) * 10 + 5).min(100)
             };
             (battery_percent, charging_state)
         };
@@ -199,10 +200,10 @@ mod tests {
         usb[6] = 220; // r2
         usb[8] = 0x02; // D-Pad East
         usb[10] = 0x04; // Mute pressed
-        usb[USB_BATTERY_BYTE_OFFSET] = 0x15; // Charging (1) | 50% (5)
+        usb[USB_BATTERY_BYTE_OFFSET] = 0x15; // Charging (1) | 50-59% bucket -> 55%
 
         let telemetry = parse_input_report(&usb).expect("valid 64B USB report");
-        assert_eq!(telemetry.battery_percent, 50);
+        assert_eq!(telemetry.battery_percent, 55);
         assert_eq!(telemetry.charging_state, ChargingState::Charging);
         assert_eq!(telemetry.dpad, DpadDirection::East);
         assert!(telemetry.mute_pressed);
@@ -230,10 +231,15 @@ mod tests {
         assert_eq!(full.charging_state, ChargingState::Full);
         assert_eq!(full.dpad, DpadDirection::Neutral);
 
-        bt[BT_BATTERY_BYTE_OFFSET] = 0x00; // Discharging 0%
-        let empty = parse_input_report(&bt).expect("valid 0% BT report");
-        assert_eq!(empty.battery_percent, 0);
-        assert_eq!(empty.charging_state, ChargingState::Discharging);
+        bt[BT_BATTERY_BYTE_OFFSET] = 0x00; // Discharging 0-9% bucket -> 5%
+        let low = parse_input_report(&bt).expect("valid 5% BT report");
+        assert_eq!(low.battery_percent, 5);
+        assert_eq!(low.charging_state, ChargingState::Discharging);
+
+        bt[BT_BATTERY_BYTE_OFFSET] = 0x0A; // Discharging 100% bucket -> 100%
+        let max_level = parse_input_report(&bt).expect("valid 100% BT report");
+        assert_eq!(max_level.battery_percent, 100);
+        assert_eq!(max_level.charging_state, ChargingState::Discharging);
     }
 
     #[test]
