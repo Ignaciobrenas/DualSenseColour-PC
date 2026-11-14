@@ -1,4 +1,5 @@
 pub mod error;
+pub mod hid;
 
 #[cfg(all(target_os = "windows", target_env = "gnu"))]
 #[allow(non_snake_case, non_upper_case_globals)]
