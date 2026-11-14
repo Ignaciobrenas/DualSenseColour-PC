@@ -7,7 +7,7 @@ use tracing::{debug, warn};
 
 use crate::error::{AppError, AppResult};
 
-use super::protocol::{is_supported_controller, DUALSENSE_EDGE_PID};
+use super::protocol::{build_bt_reset_leds_report, is_supported_controller, DUALSENSE_EDGE_PID};
 
 /// Physical or wireless link used by a connected DualSense controller.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -204,6 +204,13 @@ impl HidTransport for RealHidTransport {
             device
                 .get_feature_report(&mut feature_20)
                 .map_err(|e| Self::map_hid_error(&e))?;
+        }
+
+        let reset_report = build_bt_reset_leds_report(0);
+        if let Err(err) = device.write(&reset_report) {
+            warn!(%err, "Paquete inicial de desbloqueo de barra LED Bluetooth rechazado");
+        } else {
+            std::thread::sleep(std::time::Duration::from_millis(25));
         }
 
         debug!(

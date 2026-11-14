@@ -150,7 +150,7 @@ export function ColorControls({
                 value={hexDraft}
                 onChange={(e) => handleHexInputChange(e.target.value)}
                 onBlur={() => setHexDraft(currentHex)}
-                className="font-mono-tabular w-full rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-xs font-semibold uppercase text-slate-100 focus:border-sky-400/60 focus:outline-none"
+                className="font-mono-tabular w-full rounded-lg border border-white/12 bg-slate-950/25 px-2 py-1 text-xs font-semibold uppercase text-slate-100 backdrop-blur-sm focus:border-sky-400/60 focus:outline-none"
               />
             </div>
 
@@ -164,9 +164,9 @@ export function ColorControls({
               type="button"
               onClick={onTurnOff}
               data-testid="turn-off-btn"
-              className="glass-pill inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium text-slate-300 hover:text-rose-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+              className="ps-action-tile group inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium text-slate-200 hover:border-rose-400/40 hover:text-rose-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
             >
-              <Power className="h-3 w-3" aria-hidden="true" />
+              <Power className="h-3 w-3 text-rose-400/85 transition-transform group-hover:scale-110" aria-hidden="true" />
               Apagar LED
             </button>
           </div>
@@ -266,7 +266,7 @@ export function ColorControls({
               <Users className="h-3 w-3" aria-hidden="true" />
               LED
             </span>
-            <div className="flex items-center gap-0.5 rounded-lg bg-black/25 p-0.5">
+            <div className="flex items-center gap-0.5 rounded-lg border border-white/[0.07] bg-slate-950/20 p-0.5 backdrop-blur-sm">
               {[0, 1, 2, 3, 4, 5].map((count) => (
                 <button
                   key={count}
@@ -292,7 +292,7 @@ export function ColorControls({
               <Mic className="h-3 w-3" aria-hidden="true" />
               Mic
             </span>
-            <div className="flex max-w-[132px] flex-1 items-center gap-0.5 rounded-lg bg-black/25 p-0.5">
+            <div className="flex max-w-[132px] flex-1 items-center gap-0.5 rounded-lg border border-white/[0.07] bg-slate-950/20 p-0.5 backdrop-blur-sm">
               {MIC_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -317,42 +317,47 @@ export function ColorControls({
 
       {/* Behavior Preferences Pills */}
       <div className="grid grid-cols-3 gap-1.5">
-        <button
-          type="button"
-          aria-pressed={config.apply_on_connect}
-          onClick={() =>
-            onPreferencesChange({ apply_on_connect: !config.apply_on_connect })
-          }
-          className={`glass-pill rounded-xl px-2 py-1.5 text-[10px] font-medium ${
-            config.apply_on_connect ? 'border-sky-400/35 text-sky-200' : 'text-slate-400'
-          }`}
-        >
-          Auto-aplicar
-        </button>
-
-        <button
-          type="button"
-          aria-pressed={config.keep_alive_steam}
-          onClick={() =>
-            onPreferencesChange({ keep_alive_steam: !config.keep_alive_steam })
-          }
-          className={`glass-pill rounded-xl px-2 py-1.5 text-[10px] font-medium ${
-            config.keep_alive_steam ? 'border-sky-400/35 text-sky-200' : 'text-slate-400'
-          }`}
-        >
-          Steam Fix
-        </button>
-
-        <button
-          type="button"
-          aria-pressed={config.close_to_tray}
-          onClick={() => onPreferencesChange({ close_to_tray: !config.close_to_tray })}
-          className={`glass-pill rounded-xl px-2 py-1.5 text-[10px] font-medium ${
-            config.close_to_tray ? 'border-sky-400/35 text-sky-200' : 'text-slate-400'
-          }`}
-        >
-          Cerrar a tray
-        </button>
+        {(
+          [
+            {
+              key: 'apply_on_connect',
+              label: 'Auto-aplicar',
+              active: config.apply_on_connect,
+            },
+            {
+              key: 'keep_alive_steam',
+              label: 'Steam Fix',
+              active: config.keep_alive_steam,
+            },
+            {
+              key: 'close_to_tray',
+              label: 'Cerrar a tray',
+              active: config.close_to_tray,
+            },
+          ] as const
+        ).map((pref) => (
+          <button
+            key={pref.key}
+            type="button"
+            aria-pressed={pref.active}
+            onClick={() => onPreferencesChange({ [pref.key]: !pref.active })}
+            className={`ps-action-tile inline-flex items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-[10px] font-medium ${
+              pref.active
+                ? 'border-sky-400/45 text-sky-100 shadow-[0_0_12px_rgba(56,189,248,0.18)]'
+                : 'text-slate-400'
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`h-1.5 w-1.5 rounded-full transition-all ${
+                pref.active
+                  ? 'bg-sky-400 shadow-[0_0_8px_#38bdf8]'
+                  : 'bg-slate-600/70'
+              }`}
+            />
+            {pref.label}
+          </button>
+        ))}
       </div>
     </section>
   );
