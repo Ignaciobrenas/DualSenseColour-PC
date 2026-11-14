@@ -15,6 +15,10 @@ name = "sensehue"
 path = "src/main.rs"
 test = false
 
+[[bin]]
+name = "sensehue-cli"
+path = "src/bin/sensehue_cli.rs"
+
 [build-dependencies]
 tauri-build = { version = "2.0", features = [] }
 
