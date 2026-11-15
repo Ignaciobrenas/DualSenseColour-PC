@@ -6,12 +6,13 @@ PublisherUrl: https://github.com/Ignaciobrenas
 PackageName: SenseHue
 PackageUrl: https://github.com/Ignaciobrenas/SenseHue
 License: MIT
-ShortDescription: DualSense & DualSense Edge RGB lighting, battery telemetry and game integrations.
+ShortDescription: Independent RGB lighting, battery telemetry, and multi-controller utility for DualSense & DualSense Edge.
 Moniker: sensehue
 Tags:
   - dualsense
   - controller
+  - gamepad
   - rgb
-  - ps5
+  - bluetooth
 ManifestType: defaultLocale
 ManifestVersion: 1.6.0
