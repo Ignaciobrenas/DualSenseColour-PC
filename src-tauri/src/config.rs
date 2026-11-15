@@ -83,7 +83,7 @@ impl Default for AppConfig {
         Self {
             color: RgbColor::default(),
             brightness: 100,
-            preset_id: Some("playstation-blue".to_string()),
+            preset_id: Some("classic-blue".to_string()),
             player_leds: 1,
             mic_led: MicLedState::Off,
             apply_on_connect: true,
@@ -268,7 +268,7 @@ mod tests {
         let path = dir.path().join("missing/config.json");
         let cfg = AppConfig::load_from_path(&path).expect("missing file falls back");
         assert_eq!(cfg, AppConfig::default());
-        assert_eq!(cfg.preset_id.as_deref(), Some("playstation-blue"));
+        assert_eq!(cfg.preset_id.as_deref(), Some("classic-blue"));
         assert_eq!(cfg.brightness, 100);
         assert_eq!(cfg.player_leds, 1);
         assert!(cfg.apply_on_connect);

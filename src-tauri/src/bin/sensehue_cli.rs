@@ -27,7 +27,7 @@ pub enum CliAction {
 const HELP_TEXT: &str = "\
 SenseHue CLI v3.0.0 — DualSense Lighting & Telemetry
 Uso:
-  sensehue-cli --preset <id>                 Aplica un preset (playstation-blue, cyber-cyan, crimson-red, emerald, gold, violet)
+  sensehue-cli --preset <id>                 Aplica un preset (classic-blue, cyber-cyan, crimson-red, emerald, gold, violet)
   sensehue-cli --color <#RRGGBB> [--brightness <0..100>]  Aplica un color RGB personalizado
   sensehue-cli --mode <static|breathing|spectrum|battery> Selecciona el modo de iluminación
   sensehue-cli --off                         Apaga la barra de luz LED

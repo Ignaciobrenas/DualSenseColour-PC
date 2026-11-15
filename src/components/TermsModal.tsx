@@ -81,8 +81,15 @@ export function TermsModal({
             Discover, siempre validados con esquema estricto de datos sin código ejecutable.
           </p>
           <p>
-            <strong>4. Marcas registradas:</strong> DualSense y PlayStation son marcas de Sony
-            Interactive Entertainment Inc. Proyecto independiente sin afiliación oficial.
+            <strong>4. Fotosensibilidad y gatillos:</strong> Los efectos LED dinámicos pueden
+            generar destellos y los gatillos adaptativos aplican fuerza mecánica física. Si notas
+            molestias visuales o fatiga, usa modo estático y gatillos en «Libre».
+          </p>
+          <p>
+            <strong>5. Marcas, gráficos propios y licencias OSS:</strong> DualSense y PlayStation son
+            marcas registradas de Sony Interactive Entertainment Inc. Proyecto independiente con
+            ilustración vectorial 100 % original sin logos de terceros. Usa librerías MIT/Apache-2.0
+            (Tauri, React, hidapi, tokio, serde, Lucide).
           </p>
           <div className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-slate-950/30 px-2.5 py-1.5 text-[10px] text-slate-300 backdrop-blur-sm">
             <span className="flex items-center gap-1.5">

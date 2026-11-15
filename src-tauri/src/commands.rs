@@ -116,7 +116,7 @@ impl<T: HidTransport> ControllerService<T> {
         self.persist_and_sync_state(true)
     }
 
-    /// Applies one of the built-in named color presets (`playstation-blue`, `off`, etc.).
+    /// Applies one of the built-in named color presets (`classic-blue`, `off`, etc.).
     pub fn apply_preset(&mut self, preset_id: &str) -> AppResult<AppConfig> {
         let preset = find_preset(preset_id)
             .ok_or_else(|| AppError::InvalidColor(format!("Preset desconocido: '{preset_id}'")))?;

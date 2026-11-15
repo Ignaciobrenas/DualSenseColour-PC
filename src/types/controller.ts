@@ -136,7 +136,7 @@ export interface AppConfig {
 }
 
 export const BUILTIN_PRESETS: ColorPreset[] = [
-  { id: 'playstation-blue', name: 'PlayStation Blue', color: { r: 0, g: 67, b: 156 }, hex: '#00439C' },
+  { id: 'classic-blue', name: 'Classic Blue', color: { r: 0, g: 67, b: 156 }, hex: '#00439C' },
   { id: 'crimson-red', name: 'Crimson Red', color: { r: 255, g: 23, b: 68 }, hex: '#FF1744' },
   { id: 'cyber-cyan', name: 'Cyber Cyan', color: { r: 0, g: 240, b: 255 }, hex: '#00F0FF' },
   { id: 'emerald', name: 'Emerald', color: { r: 0, g: 230, b: 118 }, hex: '#00E676' },
@@ -227,7 +227,7 @@ export const CURATED_COMMUNITY_PRESETS: DiscoverShowcaseItem[] = [
 export const DEFAULT_CONFIG: AppConfig = {
   color: { r: 0, g: 67, b: 156 },
   brightness: 100,
-  preset_id: 'playstation-blue',
+  preset_id: 'classic-blue',
   player_leds: 1,
   mic_led: 'off',
   apply_on_connect: true,
