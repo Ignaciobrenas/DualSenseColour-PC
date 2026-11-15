@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -13,7 +14,7 @@ use crate::api::local_server::{
     DEFAULT_LOCAL_API_ADDR,
 };
 use crate::community::registry::{parse_index, parse_profile, RegistryIndex};
-use crate::config::AppConfig;
+use crate::config::{AppConfig, ControllerProfileConfig};
 use crate::effects::{evaluate_effect_frame, EffectFrameInput, LightingEffectMode};
 use crate::error::{AppError, AppResult};
 use crate::hid::battery_alerts::BatteryAlertTracker;
@@ -46,6 +47,12 @@ impl<T: HidTransport> ControllerService<T> {
             clean.keep_alive_steam,
         );
         monitor.set_sync_all_controllers(clean.sync_all_controllers);
+        for (id, profile) in &clean.per_controller {
+            monitor.set_per_controller_state(
+                id,
+                profile.to_output_state_with_battery(None, clean.gyro_indicator_enabled),
+            );
+        }
         // Perform immediate startup scan so already-connected controllers are active at 0ms.
         let _ = monitor.poll_once();
         Self {
@@ -61,10 +68,27 @@ impl<T: HidTransport> ControllerService<T> {
         self.monitor.status()
     }
 
-    /// Returns a clone of the current application configuration.
+    /// Returns a view of the current application configuration matching the active controller slot.
     #[must_use]
     pub fn config(&self) -> AppConfig {
-        self.config.clone()
+        self.config
+            .effective_view_for(self.monitor.active_controller_id())
+    }
+
+    fn sync_monitor_per_controller_states(&mut self) {
+        let gyro = self.config.gyro_indicator_enabled;
+        let snapshot = self.monitor.connected_controller_ids();
+        for (id, battery) in snapshot {
+            let state = self
+                .config
+                .profile_for_controller(Some(&id))
+                .to_output_state_with_battery(battery, gyro);
+            self.monitor.set_per_controller_state(&id, state);
+        }
+        for (id, profile) in &self.config.per_controller {
+            self.monitor
+                .set_per_controller_state(id, profile.to_output_state_with_battery(None, gyro));
+        }
     }
 
     /// Persists config (if requested) and dispatches HID output state fail-safely on transient I/O errors.
@@ -75,14 +99,147 @@ impl<T: HidTransport> ControllerService<T> {
 
         self.monitor
             .set_sync_all_controllers(self.config.sync_all_controllers);
-        let battery = self.monitor.status().battery_percent;
-        let output_state = self.config.to_output_state_with_battery(battery);
-        if let Err(err) = self.monitor.apply_output_state(output_state) {
-            warn!(%err, "Fallo temporal enviando reporte HID; el estado se reaplicará automáticamente");
-            let _ = self.monitor.poll_once();
+        self.sync_monitor_per_controller_states();
+
+        if self.config.sync_all_controllers {
+            let battery = self.monitor.status().battery_percent;
+            let output_state = self.config.to_output_state_with_battery(battery);
+            if let Err(err) = self.monitor.apply_output_state(output_state) {
+                warn!(%err, "Fallo temporal enviando reporte HID; el estado se reaplicará automáticamente");
+                let _ = self.monitor.poll_once();
+            }
+        } else if let Some(active_id) = self.monitor.active_controller_id().map(ToString::to_string)
+        {
+            let battery = self.monitor.status().battery_percent;
+            let output_state = self.config.to_output_state_for(Some(&active_id), battery);
+            if let Err(err) = self
+                .monitor
+                .apply_output_state_for(Some(&active_id), output_state)
+            {
+                warn!(%err, id = %active_id, "Fallo temporal enviando reporte HID individual");
+                let _ = self.monitor.poll_once();
+            }
         }
 
-        Ok(self.config.clone())
+        Ok(self.config())
+    }
+
+    fn update_active_profile<F>(&mut self, persist: bool, mutate: F) -> AppResult<AppConfig>
+    where
+        F: FnOnce(&mut ControllerProfileConfig),
+    {
+        if self.config.sync_all_controllers {
+            let mut profile = self.config.global_profile();
+            mutate(&mut profile);
+            let clean = profile.sanitized();
+            self.config.set_global_profile(&clean);
+            return self.persist_and_sync_state(persist);
+        }
+
+        if let Some(active_id) = self.monitor.active_controller_id().map(ToString::to_string) {
+            let fallback = self.config.global_profile();
+            let entry = self
+                .config
+                .per_controller
+                .entry(active_id.clone())
+                .or_insert(fallback);
+            mutate(entry);
+            *entry = entry.clone().sanitized();
+            if persist {
+                self.config.save_to_path(&self.config_path)?;
+            }
+            let battery = self.monitor.status().battery_percent;
+            let state = self.config.to_output_state_for(Some(&active_id), battery);
+            if let Err(err) = self.monitor.apply_output_state_for(Some(&active_id), state) {
+                warn!(%err, id = %active_id, "Fallo temporal enviando reporte HID individual");
+                let _ = self.monitor.poll_once();
+            }
+            return Ok(self.config());
+        }
+
+        let mut profile = self.config.global_profile();
+        mutate(&mut profile);
+        let clean = profile.sanitized();
+        self.config.set_global_profile(&clean);
+        self.persist_and_sync_state(persist)
+    }
+
+    /// Selects a specific connected controller (`None` keeps primary) and optionally switches sync-all mode.
+    pub fn select_controller(
+        &mut self,
+        controller_id: Option<String>,
+        sync_all: Option<bool>,
+    ) -> AppResult<(ConnectionStatus, AppConfig)> {
+        if let Some(flag) = sync_all {
+            if !flag {
+                // Snapshot global profile for any connected controller without a custom override yet.
+                let base = self.config.global_profile();
+                for (id, _) in self.monitor.connected_controller_ids() {
+                    self.config
+                        .per_controller
+                        .entry(id)
+                        .or_insert_with(|| base.clone());
+                }
+            }
+            self.config.sync_all_controllers = flag;
+            self.monitor.set_sync_all_controllers(flag);
+        }
+
+        if let Some(id) = controller_id.as_deref() {
+            if !self.config.sync_all_controllers {
+                let base = self.config.global_profile();
+                self.config
+                    .per_controller
+                    .entry(id.to_string())
+                    .or_insert(base);
+            }
+        }
+
+        self.monitor.set_selected_controller(controller_id);
+        if sync_all.is_some() {
+            let _ = self.persist_and_sync_state(true)?;
+        }
+        Ok((self.status(), self.config()))
+    }
+
+    /// Evaluates active dynamic effects for every connected controller independently.
+    pub fn apply_effects_tick(&mut self, tick_secs: f32) -> Option<RgbColor> {
+        let status = self.status();
+        if !status.connected {
+            return None;
+        }
+        let mut representative_color = None;
+        for ctrl in &status.controllers {
+            let profile = self.config.profile_for_controller(Some(&ctrl.id));
+            if profile.effect_mode == LightingEffectMode::Static {
+                continue;
+            }
+            let frame_color = evaluate_effect_frame(
+                profile.effect_mode,
+                &EffectFrameInput {
+                    base_color: profile.color,
+                    elapsed_secs: tick_secs,
+                    battery_percent: ctrl.battery_percent.unwrap_or(100),
+                    trigger_depth: ctrl.telemetry.as_ref().map_or(0, |t| t.r2),
+                    audio_bass_energy: 0.45,
+                    ..EffectFrameInput::default()
+                },
+            );
+            let mut out = profile.to_output_state_with_battery(
+                ctrl.battery_percent,
+                self.config.gyro_indicator_enabled,
+            );
+            out.color = frame_color;
+            if self.config.sync_all_controllers {
+                let _ = self.monitor.apply_output_state(out);
+                return Some(frame_color);
+            }
+            if status.active_controller_id.as_deref() == Some(ctrl.id.as_str()) {
+                representative_color = Some(frame_color);
+            }
+            let _ = self.monitor.apply_output_state_for(Some(&ctrl.id), out);
+        }
+        representative_color
     }
 
     /// Updates the RGB color & brightness, sends the HID report, and optionally persists to disk.
@@ -96,12 +253,11 @@ impl<T: HidTransport> ControllerService<T> {
     ) -> AppResult<AppConfig> {
         let clamped_brightness = brightness.min(100);
         let color = RgbColor::new(r, g, b);
-
-        self.config.color = color;
-        self.config.brightness = clamped_brightness;
-        self.config.preset_id = None;
-
-        self.persist_and_sync_state(persist)
+        self.update_active_profile(persist, |profile| {
+            profile.color = color;
+            profile.brightness = clamped_brightness;
+            profile.preset_id = None;
+        })
     }
 
     /// Updates player LED segment count (`0..=5`) and mic LED indicator state, persisting immediately.
@@ -110,10 +266,11 @@ impl<T: HidTransport> ControllerService<T> {
         player_leds: u8,
         mic_led: MicLedState,
     ) -> AppResult<AppConfig> {
-        self.config.player_leds = player_leds.min(5);
-        self.config.mic_led = mic_led;
-
-        self.persist_and_sync_state(true)
+        let clamped_leds = player_leds.min(5);
+        self.update_active_profile(true, |profile| {
+            profile.player_leds = clamped_leds;
+            profile.mic_led = mic_led;
+        })
     }
 
     /// Applies one of the built-in named color presets (`classic-blue`, `off`, etc.).
@@ -121,15 +278,15 @@ impl<T: HidTransport> ControllerService<T> {
         let preset = find_preset(preset_id)
             .ok_or_else(|| AppError::InvalidColor(format!("Preset desconocido: '{preset_id}'")))?;
 
-        self.config.color = preset.color;
-        self.config.preset_id = Some(preset.id.to_string());
-        if preset.id == "off" {
-            self.config.brightness = 0;
-        } else if self.config.brightness == 0 {
-            self.config.brightness = 100;
-        }
-
-        self.persist_and_sync_state(true)
+        self.update_active_profile(true, |profile| {
+            profile.color = preset.color;
+            profile.preset_id = Some(preset.id.to_string());
+            if preset.id == "off" {
+                profile.brightness = 0;
+            } else if profile.brightness == 0 {
+                profile.brightness = 100;
+            }
+        })
     }
 
     /// Turns off the DualSense touchpad lightbar cleanly (`brightness = 0`).
@@ -139,7 +296,13 @@ impl<T: HidTransport> ControllerService<T> {
 
     /// Replaces user preferences & controller settings, applies them to hardware, and saves to disk.
     pub fn save_config(&mut self, next: AppConfig) -> AppResult<AppConfig> {
-        let clean = next.sanitized();
+        let mut clean = next.sanitized();
+        if !clean.sync_all_controllers {
+            if let Some(active_id) = self.monitor.active_controller_id().map(ToString::to_string) {
+                let active_profile = clean.global_profile();
+                clean.per_controller.insert(active_id, active_profile);
+            }
+        }
         self.config = clean.clone();
         self.monitor
             .set_preferences(clean.apply_on_connect, clean.keep_alive_steam);
@@ -149,13 +312,15 @@ impl<T: HidTransport> ControllerService<T> {
 
     /// Updates brightness percentage (`0..=100`) while keeping active color and persisting.
     pub fn set_brightness(&mut self, brightness: u8) -> AppResult<AppConfig> {
-        self.config.brightness = brightness.min(100);
-        if self.config.brightness == 0 {
-            self.config.preset_id = Some("off".to_string());
-        } else if self.config.preset_id.as_deref() == Some("off") {
-            self.config.preset_id = None;
-        }
-        self.persist_and_sync_state(true)
+        let clamped = brightness.min(100);
+        self.update_active_profile(true, |profile| {
+            profile.brightness = clamped;
+            if clamped == 0 {
+                profile.preset_id = Some("off".to_string());
+            } else if profile.preset_id.as_deref() == Some("off") {
+                profile.preset_id = None;
+            }
+        })
     }
 
     /// Refreshes USB/Bluetooth HID detection and re-applies the active LED state immediately.
@@ -167,13 +332,18 @@ impl<T: HidTransport> ControllerService<T> {
 
     /// Updates active dynamic lighting effect mode and immediately applies an initial frame.
     pub fn set_effect_mode(&mut self, mode: LightingEffectMode) -> AppResult<AppConfig> {
-        self.config.effect_mode = mode;
+        let status = self.monitor.status();
+        let active_profile = self
+            .config
+            .profile_for_controller(self.monitor.active_controller_id());
+        let saved = self.update_active_profile(true, |profile| {
+            profile.effect_mode = mode;
+        })?;
         if mode != LightingEffectMode::Static {
-            let status = self.monitor.status();
             let frame_color = evaluate_effect_frame(
                 mode,
                 &EffectFrameInput {
-                    base_color: self.config.color,
+                    base_color: active_profile.color,
                     elapsed_secs: 0.25,
                     battery_percent: status.battery_percent.unwrap_or(100),
                     trigger_depth: status.telemetry.as_ref().map_or(0, |t| t.r2),
@@ -183,11 +353,11 @@ impl<T: HidTransport> ControllerService<T> {
             );
             let mut state = self
                 .config
-                .to_output_state_with_battery(status.battery_percent);
+                .to_output_state_for(self.monitor.active_controller_id(), status.battery_percent);
             state.color = frame_color;
             let _ = self.monitor.apply_output_state(state);
         }
-        self.persist_and_sync_state(true)
+        Ok(saved)
     }
 
     /// Programs left (L2) and right (R2) adaptive trigger resistance presets immediately.
@@ -196,9 +366,10 @@ impl<T: HidTransport> ControllerService<T> {
         left: TriggerPreset,
         right: TriggerPreset,
     ) -> AppResult<AppConfig> {
-        self.config.left_trigger = left;
-        self.config.right_trigger = right;
-        self.persist_and_sync_state(true)
+        self.update_active_profile(true, |profile| {
+            profile.left_trigger = left;
+            profile.right_trigger = right;
+        })
     }
 
     /// Exports active `.sensehue` shareable JSON configuration.
@@ -543,7 +714,7 @@ pub fn spawn_hotplug_monitor(app: AppHandle, state: AppState) {
     tauri::async_runtime::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(1));
         let mut last_status = state.snapshot().0;
-        let mut battery_alerts = BatteryAlertTracker::new();
+        let mut battery_alerts: HashMap<String, BatteryAlertTracker> = HashMap::new();
         let mut tick_secs = 0.0f32;
         loop {
             interval.tick().await;
@@ -572,50 +743,43 @@ pub fn spawn_hotplug_monitor(app: AppHandle, state: AppState) {
             }
 
             if cfg.low_battery_alerts {
-                if let Some(alert) = battery_alerts.evaluate(
-                    status.connected,
-                    status.battery_percent,
-                    status.charging_state,
-                ) {
-                    if let Err(err) = app
-                        .notification()
-                        .builder()
-                        .title(&alert.title)
-                        .body(&alert.body)
-                        .show()
+                for ctrl in &status.controllers {
+                    let tracker = battery_alerts.entry(ctrl.id.clone()).or_default();
+                    if let Some(mut alert) =
+                        tracker.evaluate(true, ctrl.battery_percent, ctrl.charging_state)
                     {
-                        warn!(%err, "No se pudo mostrar la notificación nativa de batería baja");
-                    }
-                    if let Err(err) = app.emit(EVENT_BATTERY_LOW_ALERT, &alert) {
-                        warn!(%err, "No se pudo emitir evento de batería baja a la UI");
+                        if status.connected_count > 1 {
+                            let link = match ctrl.transport {
+                                crate::hid::transport::TransportType::Usb => "USB",
+                                crate::hid::transport::TransportType::Bluetooth => "BT",
+                            };
+                            alert.body = format!("Mando #{} ({link}): {}", ctrl.slot, alert.body);
+                        }
+                        if let Err(err) = app
+                            .notification()
+                            .builder()
+                            .title(&alert.title)
+                            .body(&alert.body)
+                            .show()
+                        {
+                            warn!(%err, "No se pudo mostrar la notificación nativa de batería baja");
+                        }
+                        if let Err(err) = app.emit(EVENT_BATTERY_LOW_ALERT, &alert) {
+                            warn!(%err, "No se pudo emitir evento de batería baja a la UI");
+                        }
                     }
                 }
             }
 
-            if status.connected && cfg.effect_mode != LightingEffectMode::Static {
-                let frame_color = evaluate_effect_frame(
-                    cfg.effect_mode,
-                    &EffectFrameInput {
-                        base_color: cfg.color,
-                        elapsed_secs: tick_secs,
-                        battery_percent: status.battery_percent.unwrap_or(100),
-                        trigger_depth: status.telemetry.as_ref().map_or(0, |t| t.r2),
-                        audio_bass_energy: 0.45,
-                        ..EffectFrameInput::default()
-                    },
-                );
-                dispatch_external_rgb_sync(&state, &cfg, frame_color, false);
+            if status.connected {
                 let anim_state = state.clone();
-                let _ = tokio::task::spawn_blocking(move || {
-                    anim_state.with_service(|svc| {
-                        let mut out = svc
-                            .config()
-                            .to_output_state_with_battery(svc.status().battery_percent);
-                        out.color = frame_color;
-                        svc.monitor.apply_output_state(out)
-                    })
+                let frame_res = tokio::task::spawn_blocking(move || {
+                    anim_state.with_service(|svc| Ok(svc.apply_effects_tick(tick_secs)))
                 })
                 .await;
+                if let Ok(Ok(Some(frame_color))) = frame_res {
+                    dispatch_external_rgb_sync(&state, &cfg, frame_color, false);
+                }
             }
         }
     });
@@ -761,6 +925,29 @@ pub fn turn_off_lightbar(
 #[tauri::command]
 pub fn get_controller_status(state: tauri::State<'_, AppState>) -> AppResult<ConnectionStatus> {
     state.with_service(|svc| Ok(svc.status()))
+}
+
+/// Combined snapshot returned when switching active controller or sync-all mode.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ControllerSelectionPayload {
+    pub status: ConnectionStatus,
+    pub config: AppConfig,
+}
+
+/// Switches the active DualSense slot (USB or Bluetooth) or toggles global multi-controller sync.
+#[tauri::command]
+pub fn select_controller(
+    state: tauri::State<'_, AppState>,
+    app: AppHandle,
+    controller_id: Option<String>,
+    sync_all: Option<bool>,
+) -> AppResult<ControllerSelectionPayload> {
+    let (status, cfg) = state.with_service(|svc| svc.select_controller(controller_id, sync_all))?;
+    sync_tray_and_ui(&app, &status, &cfg, true, true);
+    Ok(ControllerSelectionPayload {
+        status,
+        config: cfg,
+    })
 }
 
 /// Forces an immediate HID rescan + real battery telemetry refresh and reapplies active lighting.
@@ -1067,5 +1254,66 @@ mod tests {
         let imported = svc.import_profile_json(&exported).expect("import succeeds");
         assert_eq!(imported.effect_mode, LightingEffectMode::Spectrum);
         assert_eq!(imported.right_trigger, TriggerPreset::WeaponClick);
+    }
+
+    #[test]
+    fn service_configures_multiple_usb_and_bluetooth_controllers_independently() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let cfg_path = dir.path().join("config.json");
+        let transport = MockHidTransport::new();
+        let usb = attached_usb_controller();
+        let bt = DetectedController {
+            path: "bt\\test\\dualsense-2".to_string(),
+            model: DeviceModel::DualSenseEdge,
+            transport: TransportType::Bluetooth,
+            serial_number: Some("SN-TEST-02".to_string()),
+            product_name: Some("DualSense Edge".to_string()),
+            interface_number: -1,
+        };
+        transport.set_controllers(vec![usb.clone(), bt.clone()]);
+
+        let mut svc = ControllerService::new(transport.clone(), AppConfig::default(), cfg_path);
+        let status = svc.status();
+        assert_eq!(status.connected_count, 2);
+        assert_eq!(status.controllers.len(), 2);
+
+        let id1 = status.controllers[0].id.clone();
+        let id2 = status.controllers[1].id.clone();
+
+        // Switch to independent mode and configure Controller #1 (USB) to Crimson Red.
+        let (_, cfg1) = svc
+            .select_controller(Some(id1.clone()), Some(false))
+            .expect("select controller 1");
+        assert!(!cfg1.sync_all_controllers);
+        transport.clear_history();
+        let updated1 = svc.apply_preset("crimson-red").expect("preset on c1");
+        assert_eq!(updated1.color, RgbColor::new(255, 23, 68));
+        let sent_c1 = transport.sent_reports();
+        assert_eq!(sent_c1.len(), 1);
+        assert_eq!(sent_c1[0].path, usb.path);
+
+        // Select Controller #2 (BT) and configure it to Cyber Cyan + WeaponClick triggers without altering #1.
+        let (st2, _) = svc
+            .select_controller(Some(id2.clone()), None)
+            .expect("select controller 2");
+        assert_eq!(st2.active_controller_id.as_deref(), Some(id2.as_str()));
+        transport.clear_history();
+        let updated2 = svc.apply_preset("cyber-cyan").expect("preset on c2");
+        assert_eq!(updated2.color, RgbColor::new(0, 240, 255));
+        let trig2 = svc
+            .set_adaptive_triggers(TriggerPreset::HairTrigger, TriggerPreset::WeaponClick)
+            .expect("triggers on c2");
+        assert_eq!(trig2.left_trigger, TriggerPreset::HairTrigger);
+        assert_eq!(trig2.right_trigger, TriggerPreset::WeaponClick);
+
+        let sent_c2 = transport.sent_reports();
+        assert!(sent_c2.iter().all(|r| r.path == bt.path));
+
+        // Verify Controller #1 retained its own Crimson Red & default Off triggers.
+        let (_, back1) = svc
+            .select_controller(Some(id1), None)
+            .expect("switch back to c1");
+        assert_eq!(back1.color, RgbColor::new(255, 23, 68));
+        assert_eq!(back1.left_trigger, TriggerPreset::Off);
     }
 }

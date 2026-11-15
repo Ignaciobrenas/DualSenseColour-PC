@@ -96,6 +96,31 @@ export interface ColorPreset {
   hex: string;
 }
 
+export interface ConnectedControllerSummary {
+  id: string;
+  path: string;
+  slot: number;
+  model: DeviceModel;
+  transport: TransportType;
+  serial_number: string | null;
+  product_name: string | null;
+  battery_percent?: number | null;
+  charging_state?: ChargingState | null;
+  telemetry?: DualSenseTelemetry | null;
+}
+
+export interface ControllerProfileConfig {
+  color: RgbColor;
+  brightness: number;
+  preset_id: string | null;
+  player_leds: number;
+  mic_led: MicLedState;
+  effect_mode: LightingEffectMode;
+  battery_bar_leds: boolean;
+  left_trigger: TriggerPreset;
+  right_trigger: TriggerPreset;
+}
+
 export interface ConnectionStatus {
   connected: boolean;
   transport: TransportType | null;
@@ -106,6 +131,8 @@ export interface ConnectionStatus {
   charging_state?: ChargingState | null;
   telemetry?: DualSenseTelemetry | null;
   connected_count?: number;
+  active_controller_id?: string | null;
+  controllers?: ConnectedControllerSummary[];
 }
 
 export interface AppConfig {
@@ -133,6 +160,7 @@ export interface AppConfig {
   mic_mute_sync_enabled: boolean;
   usb_audio_guard_enabled: boolean;
   game_profiles: GameProfileRule[];
+  per_controller?: Record<string, ControllerProfileConfig>;
 }
 
 export const BUILTIN_PRESETS: ColorPreset[] = [
@@ -249,6 +277,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   mic_mute_sync_enabled: false,
   usb_audio_guard_enabled: false,
   game_profiles: DEFAULT_GAME_PROFILES,
+  per_controller: {},
 };
 
 export const DEFAULT_STATUS: ConnectionStatus = {
@@ -261,6 +290,8 @@ export const DEFAULT_STATUS: ConnectionStatus = {
   charging_state: null,
   telemetry: null,
   connected_count: 0,
+  active_controller_id: null,
+  controllers: [],
 };
 
 export function clampByte(value: number): number {

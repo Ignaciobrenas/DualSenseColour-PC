@@ -110,6 +110,13 @@ pub fn run() {
     let app_state = commands::AppState::new(initial_config, config_path);
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
@@ -168,6 +175,7 @@ pub fn run() {
             commands::apply_preset,
             commands::turn_off_lightbar,
             commands::get_controller_status,
+            commands::select_controller,
             commands::resync_controller,
             commands::get_config,
             commands::save_config,

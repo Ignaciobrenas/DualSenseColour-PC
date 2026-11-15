@@ -62,6 +62,7 @@ export interface ControllerHook {
   testOpenRgbSync: (addr: string) => Promise<string>;
   testWledSync: (addr: string) => Promise<string>;
   toggleAutostart: () => Promise<void>;
+  selectController: (controllerId: string | null, syncAll?: boolean) => Promise<void>;
   resyncController: () => Promise<void>;
   resetToDefaults: () => Promise<void>;
 }
@@ -451,6 +452,37 @@ export function useController(): ControllerHook {
     }
   }, [autostartEnabled]);
 
+  const selectController = useCallback(
+    async (controllerId: string | null, syncAll?: boolean) => {
+      if (!isTauriRuntime()) {
+        setStatus((prev) => ({
+          ...prev,
+          active_controller_id: controllerId ?? prev.active_controller_id ?? null,
+        }));
+        if (typeof syncAll === 'boolean') {
+          setConfig((prev) => ({ ...prev, sync_all_controllers: syncAll }));
+        }
+        return;
+      }
+
+      try {
+        const res = await invoke<{ status: ConnectionStatus; config: AppConfig }>(
+          'select_controller',
+          {
+            controllerId,
+            syncAll: typeof syncAll === 'boolean' ? syncAll : null,
+          },
+        );
+        setStatus(res.status);
+        setConfig(res.config);
+        setError(null);
+      } catch (err) {
+        setError(String(err));
+      }
+    },
+    [],
+  );
+
   const resyncController = useCallback(async () => {
     if (!isTauriRuntime()) {
       return;
@@ -502,6 +534,7 @@ export function useController(): ControllerHook {
     testOpenRgbSync,
     testWledSync,
     toggleAutostart,
+    selectController,
     resyncController,
     resetToDefaults,
   };

@@ -56,6 +56,37 @@ pub struct DetectedController {
     pub interface_number: i32,
 }
 
+/// Builds a stable, deterministic identifier for a [`DetectedController`].
+#[must_use]
+pub fn controller_key(controller: &DetectedController) -> String {
+    if let Some(serial) = controller.serial_number.as_deref() {
+        let trimmed = serial.trim();
+        if !trimmed.is_empty() {
+            return format!("sn:{}", trimmed.to_ascii_lowercase());
+        }
+    }
+    format!("path:{}", controller.path)
+}
+
+/// Assigns collision-free identifiers across simultaneously connected controllers.
+#[must_use]
+pub fn assign_controller_ids(controllers: &[DetectedController]) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    controllers
+        .iter()
+        .map(|c| {
+            let base = controller_key(c);
+            if seen.insert(base.clone()) {
+                base
+            } else {
+                let fallback = format!("path:{}", c.path);
+                seen.insert(fallback.clone());
+                fallback
+            }
+        })
+        .collect()
+}
+
 /// Pure classifier determining whether a controller interface runs over USB or Bluetooth.
 #[must_use]
 pub fn detect_transport_type(
