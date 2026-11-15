@@ -1,10 +1,13 @@
 pub mod api;
 pub mod automation;
 pub mod commands;
+pub mod community;
 pub mod config;
 pub mod effects;
 pub mod error;
 pub mod hid;
+pub mod integrations;
+pub mod os_guards;
 pub mod tray;
 
 use tauri::{Manager, WindowEvent};
@@ -107,6 +110,18 @@ pub fn run() {
     let app_state = commands::AppState::new(initial_config, config_path);
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--minimized"]),
+        ))
+        .plugin(tauri_plugin_notification::init())
         .manage(app_state.clone())
         .setup(move |app| {
             #[cfg(target_os = "windows")]
@@ -138,6 +153,7 @@ pub fn run() {
             }
 
             commands::spawn_hotplug_monitor(app.handle().clone(), app_state.clone());
+            commands::spawn_game_integrations(app_state.clone());
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -159,6 +175,8 @@ pub fn run() {
             commands::apply_preset,
             commands::turn_off_lightbar,
             commands::get_controller_status,
+            commands::select_controller,
+            commands::resync_controller,
             commands::get_config,
             commands::save_config,
             commands::get_presets,
@@ -166,6 +184,12 @@ pub fn run() {
             commands::set_adaptive_triggers,
             commands::export_profile_json,
             commands::import_profile_json,
+            commands::test_openrgb_sync,
+            commands::test_wled_sync,
+            commands::get_autostart_enabled,
+            commands::set_autostart_enabled,
+            commands::validate_community_index,
+            commands::validate_and_install_community_profile,
         ])
         .run(tauri::generate_context!())
         .expect("error while running SenseHue");

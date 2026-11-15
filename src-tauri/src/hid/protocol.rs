@@ -95,16 +95,14 @@ fn populate_common_payload(
         flags |= VALID_FLAG1_PLAYER_INDICATOR_ENABLE | VALID_FLAG1_MIC_MUTE_LED_ENABLE;
     }
 
-    // valid_flag0 stays 0x00 unless adaptive trigger presets are explicitly engaged.
+    // Only lightbar-only helper reports leave valid_flag0 at 0x00; full reports always program
+    // adaptive trigger state explicitly (including Off = 0x05 to release active resistance).
     buf[base_offset] = 0x00;
     buf[base_offset + 1] = flags;
 
     if apply_player_and_mic {
         buf[base_offset + 8] = state.mic_led.as_hid_byte();
         buf[base_offset + 43] = player_count_to_mask(state.player_leds);
-    }
-
-    if state.left_trigger != TriggerPreset::Off || state.right_trigger != TriggerPreset::Off {
         apply_trigger_presets(buf, base_offset, state.left_trigger, state.right_trigger);
     }
 
@@ -347,5 +345,29 @@ mod tests {
         assert_eq!(usb_color[39], VALID_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE);
         assert_eq!(usb_color[40], VALID_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE);
         assert_eq!(usb_color[42], LIGHTBAR_SETUP_LIGHT_OUT);
+    }
+
+    #[test]
+    fn full_usb_and_bt_reports_always_program_trigger_off_reset() {
+        let off_state = DualSenseOutputState::default();
+        let usb = build_usb_full_report(&off_state);
+        assert_eq!(usb[1] & 0x0C, 0x0C);
+        assert_eq!(usb[11], 0x05); // Right trigger Off opcode
+        assert_eq!(usb[22], 0x05); // Left trigger Off opcode
+
+        let bt = build_bt_full_report(&off_state, 2);
+        assert_eq!(bt[3] & 0x0C, 0x0C);
+        assert_eq!(bt[13], 0x05); // Right trigger Off opcode (base_offset 3 + 10)
+        assert_eq!(bt[24], 0x05); // Left trigger Off opcode (base_offset 3 + 21)
+
+        let active_state = DualSenseOutputState {
+            left_trigger: TriggerPreset::Pulse,
+            right_trigger: TriggerPreset::WeaponClick,
+            ..DualSenseOutputState::default()
+        };
+        let bt_active = build_bt_full_report(&active_state, 3);
+        assert_eq!(bt_active[3] & 0x0C, 0x0C);
+        assert_eq!(bt_active[13], 0x02); // WeaponClick mode
+        assert_eq!(bt_active[24], 0x06); // Pulse mode
     }
 }

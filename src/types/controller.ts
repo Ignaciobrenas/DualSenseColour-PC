@@ -9,8 +9,52 @@ export type LightingEffectMode =
   | 'input_reactive'
   | 'audio_beat'
   | 'screen_ambilight';
-export type TriggerPreset = 'off' | 'rigid' | 'weapon_click' | 'pulse';
+export type TriggerPreset =
+  | 'off'
+  | 'rigid'
+  | 'weapon_click'
+  | 'pulse'
+  | 'hair_trigger'
+  | 'dual_stage'
+  | 'progressive_pedal';
 export type ChargingState = 'discharging' | 'charging' | 'full' | { unknown: number };
+
+export interface BatteryAlertPayload {
+  level?: 'Twenty' | 'Ten' | 'Five';
+  threshold_percent: number;
+  battery_percent: number;
+  title: string;
+  body: string;
+}
+
+export interface CommunityProfile {
+  name: string;
+  author: string;
+  color: string;
+  brightness: number;
+  player_leds: number;
+  left_trigger: TriggerPreset;
+  right_trigger: TriggerPreset;
+}
+
+export interface DiscoverShowcaseItem {
+  id: string;
+  description: string;
+  profile: CommunityProfile;
+}
+
+export interface RegistryEntry {
+  id: string;
+  name: string;
+  author: string;
+  description: string;
+  url: string;
+}
+
+export interface RegistryIndex {
+  version: number;
+  presets: RegistryEntry[];
+}
 
 export interface DualSenseTelemetry {
   battery_percent: number;
@@ -52,6 +96,31 @@ export interface ColorPreset {
   hex: string;
 }
 
+export interface ConnectedControllerSummary {
+  id: string;
+  path: string;
+  slot: number;
+  model: DeviceModel;
+  transport: TransportType;
+  serial_number: string | null;
+  product_name: string | null;
+  battery_percent?: number | null;
+  charging_state?: ChargingState | null;
+  telemetry?: DualSenseTelemetry | null;
+}
+
+export interface ControllerProfileConfig {
+  color: RgbColor;
+  brightness: number;
+  preset_id: string | null;
+  player_leds: number;
+  mic_led: MicLedState;
+  effect_mode: LightingEffectMode;
+  battery_bar_leds: boolean;
+  left_trigger: TriggerPreset;
+  right_trigger: TriggerPreset;
+}
+
 export interface ConnectionStatus {
   connected: boolean;
   transport: TransportType | null;
@@ -62,6 +131,8 @@ export interface ConnectionStatus {
   charging_state?: ChargingState | null;
   telemetry?: DualSenseTelemetry | null;
   connected_count?: number;
+  active_controller_id?: string | null;
+  controllers?: ConnectedControllerSummary[];
 }
 
 export interface AppConfig {
@@ -79,11 +150,21 @@ export interface AppConfig {
   left_trigger: TriggerPreset;
   right_trigger: TriggerPreset;
   local_api_enabled: boolean;
+  game_integrations_enabled: boolean;
+  low_battery_alerts: boolean;
+  openrgb_enabled: boolean;
+  openrgb_addr: string;
+  wled_enabled: boolean;
+  wled_addr: string;
+  gyro_indicator_enabled: boolean;
+  mic_mute_sync_enabled: boolean;
+  usb_audio_guard_enabled: boolean;
   game_profiles: GameProfileRule[];
+  per_controller?: Record<string, ControllerProfileConfig>;
 }
 
 export const BUILTIN_PRESETS: ColorPreset[] = [
-  { id: 'playstation-blue', name: 'PlayStation Blue', color: { r: 0, g: 67, b: 156 }, hex: '#00439C' },
+  { id: 'classic-blue', name: 'Classic Blue', color: { r: 0, g: 67, b: 156 }, hex: '#00439C' },
   { id: 'crimson-red', name: 'Crimson Red', color: { r: 255, g: 23, b: 68 }, hex: '#FF1744' },
   { id: 'cyber-cyan', name: 'Cyber Cyan', color: { r: 0, g: 240, b: 255 }, hex: '#00F0FF' },
   { id: 'emerald', name: 'Emerald', color: { r: 0, g: 230, b: 118 }, hex: '#00E676' },
@@ -116,10 +197,65 @@ export const DEFAULT_GAME_PROFILES: GameProfileRule[] = [
   },
 ];
 
+export const CURATED_COMMUNITY_PRESETS: DiscoverShowcaseItem[] = [
+  {
+    id: 'apex-competitive',
+    description: 'Hair-Trigger en L2/R2 y cian de alto contraste para respuesta FPS inmediata.',
+    profile: {
+      name: 'Apex Hair-Trigger',
+      author: 'SenseHue Pro',
+      color: '#00E5FF',
+      brightness: 90,
+      player_leds: 2,
+      left_trigger: 'hair_trigger',
+      right_trigger: 'hair_trigger',
+    },
+  },
+  {
+    id: 'simracing-f1',
+    description: 'Pedal progresivo en frenada L2 y aceleración R2 con LED rojo competición.',
+    profile: {
+      name: 'F1 Telemetry Grip',
+      author: 'PaddockLab',
+      color: '#FF1744',
+      brightness: 95,
+      player_leds: 5,
+      left_trigger: 'progressive_pedal',
+      right_trigger: 'progressive_pedal',
+    },
+  },
+  {
+    id: 'night-city-cyber',
+    description: 'Ámbar neón con doble etapa R2 para shooters tácticos y sesiones nocturnas.',
+    profile: {
+      name: 'Night City Dual-Stage',
+      author: 'V_Deck',
+      color: '#FFB300',
+      brightness: 80,
+      player_leds: 3,
+      left_trigger: 'rigid',
+      right_trigger: 'dual_stage',
+    },
+  },
+  {
+    id: 'oled-stealth',
+    description: 'Violeta tenue optimizado para ahorro de batería y cero reflejos en monitor OLED.',
+    profile: {
+      name: 'OLED Battery Saver',
+      author: 'LowGlow',
+      color: '#9D4EDD',
+      brightness: 35,
+      player_leds: 1,
+      left_trigger: 'off',
+      right_trigger: 'off',
+    },
+  },
+];
+
 export const DEFAULT_CONFIG: AppConfig = {
   color: { r: 0, g: 67, b: 156 },
   brightness: 100,
-  preset_id: 'playstation-blue',
+  preset_id: 'classic-blue',
   player_leds: 1,
   mic_led: 'off',
   apply_on_connect: true,
@@ -131,7 +267,17 @@ export const DEFAULT_CONFIG: AppConfig = {
   left_trigger: 'off',
   right_trigger: 'off',
   local_api_enabled: false,
+  game_integrations_enabled: false,
+  low_battery_alerts: true,
+  openrgb_enabled: false,
+  openrgb_addr: '127.0.0.1:6742',
+  wled_enabled: false,
+  wled_addr: '192.168.1.50:21324',
+  gyro_indicator_enabled: false,
+  mic_mute_sync_enabled: false,
+  usb_audio_guard_enabled: false,
   game_profiles: DEFAULT_GAME_PROFILES,
+  per_controller: {},
 };
 
 export const DEFAULT_STATUS: ConnectionStatus = {
@@ -144,6 +290,8 @@ export const DEFAULT_STATUS: ConnectionStatus = {
   charging_state: null,
   telemetry: null,
   connected_count: 0,
+  active_controller_id: null,
+  controllers: [],
 };
 
 export function clampByte(value: number): number {

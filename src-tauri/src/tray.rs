@@ -111,6 +111,8 @@ pub fn format_tray_battery_summary(status: &ConnectionStatus) -> String {
         Some(pct) => match status.charging_state {
             Some(ChargingState::Charging) => format!("Batería: {pct}% (Cargando)"),
             Some(ChargingState::Full) => format!("Batería: {pct}% (Completa)"),
+            _ if pct <= 5 => format!("Batería: {pct}% (Crítica)"),
+            _ if pct <= 20 => format!("Batería: {pct}% (Baja)"),
             _ => format!("Batería: {pct}%"),
         },
         None => "Batería: Leyendo telemetría...".to_string(),
@@ -220,6 +222,25 @@ pub fn build_dynamic_tray_icon(
     brightness: u8,
     connected: bool,
 ) -> Image<'static> {
+    build_dynamic_tray_icon_with_battery(r, g, b, brightness, connected, None, None)
+}
+
+/// Generates a 32x32 tray icon with connection & low-battery status dot (Rose <=10%, Amber <=20%, Emerald >20%).
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss
+)]
+#[must_use]
+pub fn build_dynamic_tray_icon_with_battery(
+    r: u8,
+    g: u8,
+    b: u8,
+    brightness: u8,
+    connected: bool,
+    battery_percent: Option<u8>,
+    charging_state: Option<ChargingState>,
+) -> Image<'static> {
     let size = TRAY_ICON_SIZE;
     let mut rgba = vec![0u8; size * size * 4];
 
@@ -279,13 +300,22 @@ pub fn build_dynamic_tray_icon(
                 }
             }
 
-            // Bottom-right native connection indicator dot (Emerald when connected, Slate when idle)
+            // Bottom-right native connection indicator dot (Rose/Amber when low battery, Emerald when healthy, Slate when idle)
             let d_dot = ((fx - 26.0).powi(2) + (fy - 26.0).powi(2)).sqrt();
             if d_dot <= 4.3 {
                 if d_dot > 3.1 {
                     blend_pixel(&mut rgba, size, x, y, [15, 23, 42, 255]);
                 } else if connected {
-                    blend_pixel(&mut rgba, size, x, y, [16, 185, 129, 255]);
+                    let is_discharging = !matches!(
+                        charging_state,
+                        Some(ChargingState::Charging | ChargingState::Full)
+                    );
+                    let dot_color = match battery_percent {
+                        Some(pct) if is_discharging && pct <= 10 => [244, 63, 94, 255],
+                        Some(pct) if is_discharging && pct <= 20 => [245, 158, 11, 255],
+                        _ => [16, 185, 129, 255],
+                    };
+                    blend_pixel(&mut rgba, size, x, y, dot_color);
                 } else {
                     blend_pixel(&mut rgba, size, x, y, [100, 116, 139, 255]);
                 }
@@ -348,12 +378,14 @@ impl TrayHandles {
             warn!(%err, "No se pudo actualizar tooltip nativo del tray");
         }
 
-        let icon = build_dynamic_tray_icon(
+        let icon = build_dynamic_tray_icon_with_battery(
             config.color.r,
             config.color.g,
             config.color.b,
             config.brightness,
             status.connected,
+            status.battery_percent,
+            status.charging_state,
         );
         if let Err(err) = self.tray.set_icon(Some(icon)) {
             warn!(%err, "No se pudo actualizar el icono RGB del tray");
@@ -548,12 +580,14 @@ where
 
     let menu = Menu::with_items(app, &menu_refs)?;
 
-    let initial_icon = build_dynamic_tray_icon(
+    let initial_icon = build_dynamic_tray_icon_with_battery(
         initial_config.color.r,
         initial_config.color.g,
         initial_config.color.b,
         initial_config.brightness,
         initial_status.connected,
+        initial_status.battery_percent,
+        initial_status.charging_state,
     );
 
     let tray = TrayIconBuilder::with_id(TRAY_ID)

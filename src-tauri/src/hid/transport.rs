@@ -56,6 +56,37 @@ pub struct DetectedController {
     pub interface_number: i32,
 }
 
+/// Builds a stable, deterministic identifier for a [`DetectedController`].
+#[must_use]
+pub fn controller_key(controller: &DetectedController) -> String {
+    if let Some(serial) = controller.serial_number.as_deref() {
+        let trimmed = serial.trim();
+        if !trimmed.is_empty() {
+            return format!("sn:{}", trimmed.to_ascii_lowercase());
+        }
+    }
+    format!("path:{}", controller.path)
+}
+
+/// Assigns collision-free identifiers across simultaneously connected controllers.
+#[must_use]
+pub fn assign_controller_ids(controllers: &[DetectedController]) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    controllers
+        .iter()
+        .map(|c| {
+            let base = controller_key(c);
+            if seen.insert(base.clone()) {
+                base
+            } else {
+                let fallback = format!("path:{}", c.path);
+                seen.insert(fallback.clone());
+                fallback
+            }
+        })
+        .collect()
+}
+
 /// Pure classifier determining whether a controller interface runs over USB or Bluetooth.
 #[must_use]
 pub fn detect_transport_type(
@@ -226,13 +257,40 @@ impl HidTransport for RealHidTransport {
         let mut len = device
             .read_timeout(buf, 65)
             .map_err(|e| Self::map_hid_error(&e))?;
+
+        for _ in 0..3 {
+            if len > 0 {
+                break;
+            }
+            // Retry briefly if Bluetooth HID idle throttling hasn't flushed a packet yet.
+            len = device
+                .read_timeout(buf, 75)
+                .map_err(|e| Self::map_hid_error(&e))?;
+        }
+
         if len > 0 && len < 54 && buf.first() == Some(&0x01) {
             let mut feature_05 = [0u8; 64];
             feature_05[0] = 0x05;
-            if device.get_feature_report(&mut feature_05).is_ok() {
-                len = device
-                    .read_timeout(buf, 65)
-                    .map_err(|e| Self::map_hid_error(&e))?;
+            if device.get_feature_report(&mut feature_05).is_err() {
+                let mut feature_20 = [0u8; 64];
+                feature_20[0] = 0x20;
+                let _ = device.get_feature_report(&mut feature_20);
+            }
+            // Drain any already-queued 10-byte legacy 0x01 packets until extended 0x31 arrives.
+            let mut scratch = vec![0u8; buf.len()];
+            for _ in 0..16 {
+                match device.read_timeout(&mut scratch, 30) {
+                    Ok(next_len) if next_len >= 55 && scratch.first() == Some(&0x31) => {
+                        buf[..next_len].copy_from_slice(&scratch[..next_len]);
+                        len = next_len;
+                        break;
+                    }
+                    Ok(0) | Err(_) => break,
+                    Ok(next_len) => {
+                        buf[..next_len].copy_from_slice(&scratch[..next_len]);
+                        len = next_len;
+                    }
+                }
             }
         }
 

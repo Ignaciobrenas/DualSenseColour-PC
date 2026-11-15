@@ -1,0 +1,10 @@
+{
+  "name": "sensehue-decky",
+  "version": "3.0.0",
+  "description": "SenseHue quick-access panel for Steam Deck Gaming Mode",
+  "type": "module",
+  "scripts": { "build": "rollup -c" },
+  "license": "MIT",
+  "dependencies": { "@decky/api": "^1.1.1", "@decky/ui": "^4.7.0" },
+  "devDependencies": { "@decky/rollup": "^1.0.1", "typescript": "^5.6.0" }
+}

@@ -40,14 +40,18 @@ Para desbloquear los reportes extendidos:
 | Offset (Byte) | Tamaño | Campo | Valor / Descripción |
 | :---: | :---: | :--- | :--- |
 | `0` | 1 | `report_id` | `0x02` (USB Output Report) |
-| `1` | 1 | `valid_flag0` | `0x00` (no sobreescribe motores de háptica/vibración) |
+| `1` | 1 | `valid_flag0` | Flags de gatillos adaptativos (`0x04` = R2, `0x08` = L2, `0x0C` = ambos) |
 | `2` | 1 | `valid_flag1` | Bitmask de funciones activas:<br>• `0x01` = Mic Mute LED<br>• `0x04` = Touchpad Lightbar RGB<br>• `0x10` = Player Indicator LEDs |
 | `9` | 1 | `mic_mute_led` | `0x00` = Off · `0x01` = Solid On · `0x02` = Pulse |
+| `11..21` | 11 | `right_trigger` | Descriptor de efecto adaptativo **R2** (modo + parámetros) |
+| `22..32` | 11 | `left_trigger` | Descriptor de efecto adaptativo **L2** (modo + parámetros) |
+| `39..40` | 2 | `valid_flag2` | `0x02` para habilitar control de arranque del Lightbar (`LIGHTBAR_SETUP_CONTROL_ENABLE`) |
+| `42` | 1 | `lightbar_setup` | `0x02` (`LIGHTBAR_SETUP_LIGHT_OUT`) para desbloquear RGB personalizado |
 | `44` | 1 | `player_leds` | Bitmask de los 5 LEDs inferiores + bit de brillo/fade |
 | `45` | 1 | `lightbar_red` | Canal Rojo (`0x00` – `0xFF`, preescalado con brillo) |
 | `46` | 1 | `lightbar_green` | Canal Verde (`0x00` – `0xFF`, preescalado con brillo) |
 | `47` | 1 | `lightbar_blue` | Canal Azul (`0x00` – `0xFF`, preescalado con brillo) |
-| Resto | — | Padding | `0x00` para evitar interferir con gatillos adaptativos o audio |
+| Resto | — | Padding | `0x00` (mantiene háptica/audio sin modificar) |
 
 ---
 
@@ -60,9 +64,13 @@ Los reportes Bluetooth añaden una cabecera de 2 bytes (`seq_tag` y `tag`) al pr
 | `0` | 1 | `report_id` | `0x31` (BT Output Report) |
 | `1` | 1 | `seq_tag` | `(seq & 0x0F) << 4` (nibble alto rotativo `0..15`, bit 0..3 = `0`) |
 | `2` | 1 | `tag` | `0x10` (`DS_OUTPUT_TAG`, obligatorio en DualSense BT) |
-| `3` | 1 | `valid_flag0` | `0x00` |
+| `3` | 1 | `valid_flag0` | Flags de gatillos adaptativos (`0x04` R2 \| `0x08` L2) |
 | `4` | 1 | `valid_flag1` | Bitmask (`0x01` Mic LED \| `0x04` Lightbar \| `0x10` Player LEDs) |
 | `11` | 1 | `mic_mute_led` | `0x00` = Off · `0x01` = On · `0x02` = Pulse |
+| `13..23` | 11 | `right_trigger` | Descriptor adaptativo **R2** (offset `10 + 3`) |
+| `24..34` | 11 | `left_trigger` | Descriptor adaptativo **L2** (offset `21 + 3`) |
+| `41..42` | 2 | `valid_flag2` | `0x02` (`LIGHTBAR_SETUP_CONTROL_ENABLE`) |
+| `44` | 1 | `lightbar_setup` | `0x02` (`LIGHTBAR_SETUP_LIGHT_OUT`) |
 | `46` | 1 | `player_leds` | Bitmask Player LEDs (offset `44 + 2`) |
 | `47` | 1 | `lightbar_red` | Rojo (`0x00` – `0xFF`) |
 | `48` | 1 | `lightbar_green` | Verde (`0x00` – `0xFF`) |
@@ -101,3 +109,14 @@ Los 5 LEDs blancos bajo la barra del touchpad siguen la disposición simétrica 
 | `5` (Todos) | `0x1F` | `● ● ● ● ●` |
 
 *(Si deseas desactivar la animación fade-in, puede combinarse con el bit `0x20`, aunque los presets base estándar preservan transiciones suaves con `0x00..=0x1F`.)*
+
+---
+
+## 8. Decodificación de Input Reports y Batería Real (`0x01` USB / `0x31` BT)
+
+En `src-tauri/src/hid/input_report.rs`, SenseHue decodifica las lecturas analógicas y el nivel real de batería directamente desde el firmware:
+
+- **USB (`Report ID 0x01`, >= 54 bytes)**: Byte de batería en **offset `53`** (`USB_BATTERY_BYTE_OFFSET`).
+- **Bluetooth extendido (`Report ID 0x31`, >= 55 bytes)**: Byte de batería en **offset `54`** (`BT_BATTERY_BYTE_OFFSET`), disponible automáticamente tras despertar el mando con Feature Report `0x05` / `0x20`. Si existen tramas *legacy* `0x01` en cola sobre Bluetooth, el lector drena hasta 16 paquetes hasta obtener la lectura extendida `0x31`.
+- **Nibble inferior (`byte & 0x0F`)**: Escala lineal de hardware (`0..9` → `(nibble * 10 + 5)%`, saturando al `100%` en `>= 0x0A` o estado `Full`).
+- **Nibble superior (`(byte >> 4) & 0x0F`)**: `0x00` = `Discharging`, `0x01` = `Charging`, `0x02` = `Full`.

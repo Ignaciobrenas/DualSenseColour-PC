@@ -5,8 +5,11 @@ import {
   BUILTIN_PRESETS,
   DEFAULT_CONFIG,
   DEFAULT_STATUS,
+  parseHexColor,
   type AppConfig,
+  type BatteryAlertPayload,
   type ColorPreset,
+  type CommunityProfile,
   type ConnectionStatus,
   type LightingEffectMode,
   type MicLedState,
@@ -42,7 +45,10 @@ export interface ControllerHook {
   config: AppConfig;
   presets: ColorPreset[];
   error: string | null;
+  lowBatteryAlert: BatteryAlertPayload | null;
+  autostartEnabled: boolean;
   clearError: () => void;
+  dismissLowBatteryAlert: () => void;
   updateColor: (color: RgbColor, brightness: number, persist: boolean) => void;
   applyPreset: (presetId: string) => Promise<void>;
   turnOffLightbar: () => Promise<void>;
@@ -52,6 +58,11 @@ export interface ControllerHook {
   updateAdaptiveTriggers: (left: TriggerPreset, right: TriggerPreset) => Promise<void>;
   exportProfileJson: () => Promise<string>;
   importProfileJson: (json: string) => Promise<void>;
+  installCommunityProfile: (profile: CommunityProfile | string) => Promise<void>;
+  testOpenRgbSync: (addr: string) => Promise<string>;
+  testWledSync: (addr: string) => Promise<string>;
+  toggleAutostart: () => Promise<void>;
+  selectController: (controllerId: string | null, syncAll?: boolean) => Promise<void>;
   resyncController: () => Promise<void>;
   resetToDefaults: () => Promise<void>;
 }
@@ -61,10 +72,18 @@ export function useController(): ControllerHook {
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [presets, setPresets] = useState<ColorPreset[]>(BUILTIN_PRESETS);
   const [error, setError] = useState<string | null>(null);
+  const [lowBatteryAlert, setLowBatteryAlert] = useState<BatteryAlertPayload | null>(null);
+  const [autostartEnabled, setAutostartEnabled] = useState<boolean>(false);
 
   const lastSentAtRef = useRef<number>(0);
   const pendingTimerRef = useRef<number | null>(null);
   const latestPayloadRef = useRef<{ color: RgbColor; brightness: number } | null>(null);
+  const configRef = useRef<AppConfig>(DEFAULT_CONFIG);
+  const triggerReqSeqRef = useRef<number>(0);
+
+  useEffect(() => {
+    configRef.current = config;
+  }, [config]);
 
   useEffect(() => {
     document.documentElement.style.setProperty(
@@ -85,17 +104,20 @@ export function useController(): ControllerHook {
     let cancelled = false;
     let unlistenStatus: UnlistenFn | undefined;
     let unlistenColor: UnlistenFn | undefined;
+    let unlistenBatteryAlert: UnlistenFn | undefined;
 
     const bootstrap = async () => {
       try {
-        const [initialStatus, initialConfig, loadedPresets] = await Promise.all([
+        const [initialStatus, initialConfig, loadedPresets, initialAutostart] = await Promise.all([
           invoke<ConnectionStatus>('get_controller_status'),
           invoke<AppConfig>('get_config'),
           invoke<ColorPreset[]>('get_presets'),
+          invoke<boolean>('get_autostart_enabled').catch(() => false),
         ]);
         if (!cancelled) {
           setStatus(initialStatus);
           setConfig(initialConfig);
+          setAutostartEnabled(initialAutostart);
           if (loadedPresets.length > 0) {
             setPresets(loadedPresets);
           }
@@ -109,12 +131,26 @@ export function useController(): ControllerHook {
       unlistenStatus = await listen<ConnectionStatus>('controller-status-changed', (event) => {
         if (!cancelled) {
           setStatus(event.payload);
+          if (
+            event.payload.charging_state === 'charging' ||
+            event.payload.charging_state === 'full' ||
+            (typeof event.payload.battery_percent === 'number' &&
+              event.payload.battery_percent > 25)
+          ) {
+            setLowBatteryAlert(null);
+          }
         }
       });
 
       unlistenColor = await listen<AppConfig>('lightbar-color-changed', (event) => {
         if (!cancelled) {
           setConfig(event.payload);
+        }
+      });
+
+      unlistenBatteryAlert = await listen<BatteryAlertPayload>('battery-low-alert', (event) => {
+        if (!cancelled) {
+          setLowBatteryAlert(event.payload);
         }
       });
     };
@@ -128,6 +164,7 @@ export function useController(): ControllerHook {
       }
       unlistenStatus?.();
       unlistenColor?.();
+      unlistenBatteryAlert?.();
     };
   }, []);
 
@@ -275,11 +312,9 @@ export function useController(): ControllerHook {
 
   const updatePreferences = useCallback(
     async (patch: Partial<AppConfig>) => {
-      let nextConfig: AppConfig = DEFAULT_CONFIG;
-      setConfig((prev) => {
-        nextConfig = { ...prev, ...patch };
-        return nextConfig;
-      });
+      const nextConfig: AppConfig = { ...configRef.current, ...patch };
+      configRef.current = nextConfig;
+      setConfig(nextConfig);
 
       if (!isTauriRuntime()) {
         return;
@@ -287,6 +322,7 @@ export function useController(): ControllerHook {
 
       try {
         const saved = await invoke<AppConfig>('save_config', { config: nextConfig });
+        configRef.current = saved;
         setConfig(saved);
         setError(null);
       } catch (err) {
@@ -297,13 +333,18 @@ export function useController(): ControllerHook {
   );
 
   const updateEffectMode = useCallback(async (mode: LightingEffectMode) => {
-    setConfig((prev) => ({ ...prev, effect_mode: mode }));
+    setConfig((prev) => {
+      const next = { ...prev, effect_mode: mode };
+      configRef.current = next;
+      return next;
+    });
     if (!isTauriRuntime()) {
       return;
     }
 
     try {
       const updated = await invoke<AppConfig>('set_effect_mode', { mode });
+      configRef.current = updated;
       setConfig(updated);
       setError(null);
     } catch (err) {
@@ -313,17 +354,29 @@ export function useController(): ControllerHook {
 
   const updateAdaptiveTriggers = useCallback(
     async (left: TriggerPreset, right: TriggerPreset) => {
-      setConfig((prev) => ({ ...prev, left_trigger: left, right_trigger: right }));
+      const reqSeq = ++triggerReqSeqRef.current;
+      const optimistic: AppConfig = {
+        ...configRef.current,
+        left_trigger: left,
+        right_trigger: right,
+      };
+      configRef.current = optimistic;
+      setConfig(optimistic);
       if (!isTauriRuntime()) {
         return;
       }
 
       try {
         const updated = await invoke<AppConfig>('set_adaptive_triggers', { left, right });
-        setConfig(updated);
-        setError(null);
+        if (reqSeq === triggerReqSeqRef.current) {
+          configRef.current = updated;
+          setConfig(updated);
+          setError(null);
+        }
       } catch (err) {
-        setError(String(err));
+        if (reqSeq === triggerReqSeqRef.current) {
+          setError(String(err));
+        }
       }
     },
     [],
@@ -353,6 +406,104 @@ export function useController(): ControllerHook {
   }, []);
 
   const clearError = useCallback(() => setError(null), []);
+  const dismissLowBatteryAlert = useCallback(() => setLowBatteryAlert(null), []);
+
+  const installCommunityProfile = useCallback(async (profileOrJson: CommunityProfile | string) => {
+    const rawJson =
+      typeof profileOrJson === 'string' ? profileOrJson : JSON.stringify(profileOrJson);
+
+    if (!isTauriRuntime()) {
+      const parsed =
+        typeof profileOrJson === 'string'
+          ? (JSON.parse(profileOrJson) as CommunityProfile)
+          : profileOrJson;
+      const parsedColor = parseHexColor(parsed.color);
+      setConfig((prev) => ({
+        ...prev,
+        color: parsedColor ?? prev.color,
+        brightness: Math.max(0, Math.min(100, parsed.brightness)),
+        player_leds: Math.max(0, Math.min(5, parsed.player_leds)),
+        left_trigger: parsed.left_trigger,
+        right_trigger: parsed.right_trigger,
+        preset_id: null,
+      }));
+      setError(null);
+      return;
+    }
+
+    try {
+      const saved = await invoke<AppConfig>('validate_and_install_community_profile', {
+        rawJson,
+      });
+      setConfig(saved);
+      setError(null);
+    } catch (err) {
+      setError(String(err));
+    }
+  }, []);
+
+  const testOpenRgbSync = useCallback(async (addr: string): Promise<string> => {
+    if (!isTauriRuntime()) {
+      return `OpenRGB listo (${addr}) en modo vista previa`;
+    }
+    const count = await invoke<number>('test_openrgb_sync', { addr });
+    return `Conectado · ${count} dispositivo${count === 1 ? '' : 's'} RGB sincronizados`;
+  }, []);
+
+  const testWledSync = useCallback(async (addr: string): Promise<string> => {
+    if (!isTauriRuntime()) {
+      return `WLED DRGB enviado (${addr}) en modo vista previa`;
+    }
+    const bytes = await invoke<number>('test_wled_sync', { addr });
+    return `Frame DRGB enviado (${bytes} bytes) a ${addr}`;
+  }, []);
+
+  const toggleAutostart = useCallback(async () => {
+    const next = !autostartEnabled;
+    setAutostartEnabled(next);
+    if (!isTauriRuntime()) {
+      return;
+    }
+    try {
+      const updated = await invoke<boolean>('set_autostart_enabled', { enabled: next });
+      setAutostartEnabled(updated);
+      setError(null);
+    } catch (err) {
+      setAutostartEnabled(!next);
+      setError(String(err));
+    }
+  }, [autostartEnabled]);
+
+  const selectController = useCallback(
+    async (controllerId: string | null, syncAll?: boolean) => {
+      if (!isTauriRuntime()) {
+        setStatus((prev) => ({
+          ...prev,
+          active_controller_id: controllerId ?? prev.active_controller_id ?? null,
+        }));
+        if (typeof syncAll === 'boolean') {
+          setConfig((prev) => ({ ...prev, sync_all_controllers: syncAll }));
+        }
+        return;
+      }
+
+      try {
+        const res = await invoke<{ status: ConnectionStatus; config: AppConfig }>(
+          'select_controller',
+          {
+            controllerId,
+            syncAll: typeof syncAll === 'boolean' ? syncAll : null,
+          },
+        );
+        setStatus(res.status);
+        setConfig(res.config);
+        setError(null);
+      } catch (err) {
+        setError(String(err));
+      }
+    },
+    [],
+  );
 
   const resyncController = useCallback(async () => {
     if (!isTauriRuntime()) {
@@ -360,17 +511,13 @@ export function useController(): ControllerHook {
     }
 
     try {
-      const [freshStatus, freshConfig] = await Promise.all([
-        invoke<ConnectionStatus>('get_controller_status'),
-        invoke<AppConfig>('save_config', { config }),
-      ]);
+      const freshStatus = await invoke<ConnectionStatus>('resync_controller');
       setStatus(freshStatus);
-      setConfig(freshConfig);
       setError(null);
     } catch (err) {
       setError(String(err));
     }
-  }, [config]);
+  }, []);
 
   const resetToDefaults = useCallback(async () => {
     setConfig(DEFAULT_CONFIG);
@@ -392,7 +539,10 @@ export function useController(): ControllerHook {
     config,
     presets,
     error,
+    lowBatteryAlert,
+    autostartEnabled,
     clearError,
+    dismissLowBatteryAlert,
     updateColor,
     applyPreset,
     turnOffLightbar,
@@ -402,6 +552,11 @@ export function useController(): ControllerHook {
     updateAdaptiveTriggers,
     exportProfileJson,
     importProfileJson,
+    installCommunityProfile,
+    testOpenRgbSync,
+    testWledSync,
+    toggleAutostart,
+    selectController,
     resyncController,
     resetToDefaults,
   };

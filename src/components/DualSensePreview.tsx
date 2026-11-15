@@ -71,11 +71,11 @@ export function DualSensePreview({
 
   return (
     <figure
-      aria-label={`Vista previa de barra de luz DualSense ${hex} al ${clampedBrightness}%`}
+      aria-label={`Vista previa de barra de luz del mando ${hex} al ${clampedBrightness}%`}
       data-testid="dualsense-preview"
       data-color={hex}
       data-brightness={clampedBrightness}
-      className="relative mx-auto flex w-full max-w-[330px] select-none items-center justify-center py-1"
+      className="relative mx-auto flex w-full max-w-[325px] select-none items-center justify-center py-0.5"
     >
       {/* Ambient backdrop halo diffused behind controller */}
       <div
@@ -90,17 +90,17 @@ export function DualSensePreview({
         }}
       />
 
-      {/* Base hardware photo */}
+      {/* Base hardware render (modified without PlayStation center logo) */}
       <div className="relative w-full">
         <img
           src={controllerRenderUrl}
-          alt="Sony PlayStation 5 DualSense controller"
+          alt="Vista previa del mando inalámbrico DualSense"
           draggable={false}
           className="relative z-10 block h-auto w-full drop-shadow-[0_18px_28px_rgba(0,0,0,0.65)] transition-opacity duration-200"
           style={{ opacity: connected ? 1 : 0.88 }}
         />
 
-        {/* Real-time optical LED overlay matching 900x615 controller photo seam coordinates */}
+        {/* Real-time optical LED overlay matching 900x615 controller seam coordinates */}
         <svg
           viewBox="0 0 900 615"
           aria-hidden="true"
@@ -162,7 +162,7 @@ export function DualSensePreview({
             />
           </g>
 
-          {/* 5 Sony Player Indicator micro-LEDs centered below touchpad */}
+          {/* 5 Player Indicator micro-LEDs centered below touchpad */}
           <g data-testid="player-leds-overlay">
             {PLAYER_LED_POSITIONS.map(({ bit, cx }) => {
               const active = (playerMask & bit) !== 0;
@@ -180,7 +180,7 @@ export function DualSensePreview({
             })}
           </g>
 
-          {/* DualSense Microphone Mute LED indicator below PS button */}
+          {/* Microphone Mute LED indicator */}
           {micLed !== 'off' && (
             <rect
               data-testid="mic-led-overlay"

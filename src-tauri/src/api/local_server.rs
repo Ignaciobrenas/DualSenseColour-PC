@@ -89,7 +89,9 @@ pub fn parse_hex_color(hex: &str) -> Option<RgbColor> {
 /// Resolves built-in SenseHue preset identifiers for `POST /preset/<id>`.
 pub fn preset_color_for_id(id: &str) -> Option<RgbColor> {
     match id.trim().to_ascii_lowercase().as_str() {
-        "ps5-blue" | "blue" => Some(RgbColor::new(0, 67, 156)),
+        "classic-blue" | "playstation-blue" | "ps5-blue" | "blue" => {
+            Some(RgbColor::new(0, 67, 156))
+        }
         "ice" | "cyan" | "sensehue" => Some(RgbColor::new(0, 229, 255)),
         "crimson" | "red" => Some(RgbColor::new(220, 38, 38)),
         "cosmic-purple" | "purple" => Some(RgbColor::new(168, 85, 247)),

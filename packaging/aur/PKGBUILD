@@ -1,0 +1,26 @@
+# Maintainer: Ignacio Breñas
+pkgname=sensehue-bin
+pkgver=3.0.0
+pkgrel=1
+pkgdesc="DualSense & DualSense Edge RGB lighting, battery telemetry and game integrations"
+arch=('x86_64')
+url="https://github.com/Ignaciobrenas/SenseHue"
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'libayatana-appindicator' 'hidapi')
+provides=('sensehue')
+conflicts=('sensehue')
+source=("sensehue-${pkgver}.deb::${url}/releases/download/v${pkgver}/SenseHue_${pkgver}_amd64.deb")
+sha256sums=('SKIP') # makepkg -g tras publicar la release
+
+package() {
+  bsdtar -xf data.tar.* -C "${pkgdir}"
+  install -Dm644 /dev/stdin "${pkgdir}/usr/lib/systemd/user/sensehue.service" <<'EOF'
+[Unit]
+Description=SenseHue - DualSense lighting daemon
+[Service]
+ExecStart=/usr/bin/sensehue
+Restart=on-failure
+[Install]
+WantedBy=default.target
+EOF
+}

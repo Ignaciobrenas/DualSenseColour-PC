@@ -244,6 +244,40 @@ input[type="range"].glass-slider::-moz-range-thumb {
   animation: micPulse 1.6s ease-in-out infinite;
 }
 
+@keyframes panelEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.panel-enter {
+  animation: panelEnter 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Sleek glass scrollbar for compact panels */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .glass-shell,
   .glass-modal,
@@ -251,7 +285,8 @@ input[type="range"].glass-slider::-moz-range-thumb {
   .glass-pill,
   .ps-action-tile,
   .ps-cta-btn,
-  .animate-mic-pulse {
+  .animate-mic-pulse,
+  .panel-enter {
     transition: none;
     animation: none;
   }
