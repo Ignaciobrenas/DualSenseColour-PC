@@ -208,6 +208,30 @@ impl<T: HidTransport> ControllerService<T> {
         self.save_config(parsed)
     }
 
+    /// Aplica un frame transitorio de una integración (sin persistir en disco).
+    ///
+    /// `blink_on` indica la fase actual del parpadeo (4 Hz, seguro fotosensible).
+    pub fn apply_integration_frame(
+        &mut self,
+        frame: crate::integrations::LedFrame,
+        blink_on: bool,
+    ) -> AppResult<()> {
+        let battery = self.monitor.status().battery_percent;
+        let mut state = self.config.to_output_state_with_battery(battery);
+        if let Some(color) = frame.color {
+            state.color = if frame.blink && !blink_on {
+                RgbColor::new(0, 0, 0)
+            } else {
+                color
+            };
+            state.brightness = state.brightness.max(30);
+        }
+        if let Some(mask) = frame.player_mask {
+            state.player_leds = (mask & 0x1F).count_ones() as u8;
+        }
+        self.monitor.apply_output_state(state).map(|_| ())
+    }
+
     /// Advances the underlying HID hotplug monitor by one polling cycle.
     pub fn poll_once(&mut self) -> Vec<ControllerEvent> {
         self.monitor.poll_once()
@@ -258,6 +282,63 @@ impl AppState {
             .map_err(|_| AppError::HidIo("Error interno de bloqueo del servicio".to_string()))?;
         f(&mut guard)
     }
+}
+
+type LastFrame = (
+    std::time::Instant,
+    Option<(crate::integrations::LedFrame, bool)>,
+);
+
+/// Arranca los listeners de juegos si `game_integrations_enabled` está activo en la configuración.
+///
+/// Los frames se limitan a ~20 Hz y se descartan si no cambian, para no saturar el HID.
+pub fn spawn_game_integrations(state: AppState) {
+    use crate::integrations::runtime::{self, FrameSink};
+    use crate::integrations::sim_telemetry::{F1_PORT, FORZA_PORT};
+    use std::time::Instant;
+
+    let (_, cfg) = state.snapshot();
+    if !cfg.game_integrations_enabled {
+        return;
+    }
+
+    let started = Instant::now();
+    let last: Arc<Mutex<LastFrame>> = Arc::new(Mutex::new((Instant::now(), None)));
+    let sink_state = state;
+    let sink: FrameSink = Arc::new(move |frame| {
+        let blink_on = (started.elapsed().as_millis() / 125).is_multiple_of(2);
+        let key = (frame, frame.blink && blink_on);
+        let Ok(mut guard) = last.lock() else { return };
+        if guard.0.elapsed() < Duration::from_millis(50) || guard.1 == Some(key) {
+            return;
+        }
+        guard.0 = Instant::now();
+        guard.1 = Some(key);
+        drop(guard);
+        if let Err(err) =
+            sink_state.with_service(|svc| svc.apply_integration_frame(frame, blink_on))
+        {
+            warn!(%err, "No se pudo aplicar el frame de integración");
+        }
+    });
+
+    let s = Arc::clone(&sink);
+    tauri::async_runtime::spawn(async move {
+        if let Err(err) = runtime::run_f1_listener(&format!("0.0.0.0:{F1_PORT}"), s).await {
+            warn!(%err, "Telemetría F1 no disponible");
+        }
+    });
+    let s = Arc::clone(&sink);
+    tauri::async_runtime::spawn(async move {
+        if let Err(err) = runtime::run_forza_listener(&format!("0.0.0.0:{FORZA_PORT}"), s).await {
+            warn!(%err, "Telemetría Forza no disponible");
+        }
+    });
+    tauri::async_runtime::spawn(async move {
+        if let Err(err) = runtime::run_gsi_server(runtime::GSI_ADDR, sink).await {
+            warn!(%err, "Valve GSI no disponible");
+        }
+    });
 }
 
 fn sync_tray_and_ui(

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.sensehue.SenseHue</id>
+  <name>SenseHue</name>
+  <summary>DualSense lighting and telemetry</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>Control the RGB lightbar, player LEDs, adaptive triggers and battery telemetry of your DualSense and DualSense Edge controllers.</p>
+  </description>
+  <url type="homepage">https://github.com/Ignaciobrenas/SenseHue</url>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="3.0.0" date="2026-11-15"/>
+  </releases>
+</component>

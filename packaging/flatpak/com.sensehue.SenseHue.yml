@@ -1,0 +1,27 @@
+app-id: com.sensehue.SenseHue
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+command: sensehue
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=all          # acceso hidraw al DualSense
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --filesystem=xdg-config/sensehue:create
+modules:
+  - name: sensehue
+    buildsystem: simple
+    build-commands:
+      - ar x sensehue.deb
+      - tar -xf data.tar.* -C /app --strip-components=2 ./usr
+      - install -Dm644 com.sensehue.SenseHue.metainfo.xml /app/share/metainfo/com.sensehue.SenseHue.metainfo.xml
+    sources:
+      - type: file
+        url: https://github.com/Ignaciobrenas/SenseHue/releases/download/v3.0.0/SenseHue_3.0.0_amd64.deb
+        dest-filename: sensehue.deb
+        # Sustituir por el sha256 real tras publicar la release
+        sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      - type: file
+        path: com.sensehue.SenseHue.metainfo.xml

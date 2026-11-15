@@ -1,0 +1,15 @@
+PackageIdentifier: SenseHue.SenseHue
+PackageVersion: 3.0.0
+InstallerType: nullsoft
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/Ignaciobrenas/SenseHue/releases/download/v3.0.0/SenseHue_3.0.0_x64-setup.exe
+    # Rellenar con `wingetcreate update` tras publicar la release v3.0.0
+    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+ManifestType: installer
+ManifestVersion: 1.6.0

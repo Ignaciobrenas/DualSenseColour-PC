@@ -1,0 +1,17 @@
+PackageIdentifier: SenseHue.SenseHue
+PackageVersion: 3.0.0
+PackageLocale: en-US
+Publisher: Ignacio Breñas
+PublisherUrl: https://github.com/Ignaciobrenas
+PackageName: SenseHue
+PackageUrl: https://github.com/Ignaciobrenas/SenseHue
+License: MIT
+ShortDescription: DualSense & DualSense Edge RGB lighting, battery telemetry and game integrations.
+Moniker: sensehue
+Tags:
+  - dualsense
+  - controller
+  - rgb
+  - ps5
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

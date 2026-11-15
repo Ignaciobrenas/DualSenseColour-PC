@@ -1,7 +1,7 @@
 {
   "name": "sensehue",
   "private": true,
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "SenseHue — DualSense & DualSense Edge RGB Lighting, Battery Telemetry, Dynamic Effects & Diagnostics Suite for Windows, Linux & SteamOS.",
   "type": "module",
   "scripts": {

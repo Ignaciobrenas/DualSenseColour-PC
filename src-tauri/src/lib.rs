@@ -1,10 +1,13 @@
 pub mod api;
 pub mod automation;
 pub mod commands;
+pub mod community;
 pub mod config;
 pub mod effects;
 pub mod error;
 pub mod hid;
+pub mod integrations;
+pub mod os_guards;
 pub mod tray;
 
 use tauri::{Manager, WindowEvent};
@@ -107,6 +110,10 @@ pub fn run() {
     let app_state = commands::AppState::new(initial_config, config_path);
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--minimized"]),
+        ))
         .manage(app_state.clone())
         .setup(move |app| {
             #[cfg(target_os = "windows")]
@@ -138,6 +145,7 @@ pub fn run() {
             }
 
             commands::spawn_hotplug_monitor(app.handle().clone(), app_state.clone());
+            commands::spawn_game_integrations(app_state.clone());
             Ok(())
         })
         .on_window_event(|window, event| {
