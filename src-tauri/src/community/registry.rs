@@ -166,4 +166,16 @@ mod tests {
         let dup = r#"{"version":1,"presets":[{"id":"a","name":"A","author":"x","description":"d","url":"https://x"},{"id":"a","name":"B","author":"x","description":"d","url":"https://y"}]}"#;
         assert_eq!(parse_index(dup), Err(ValidationError::Field("id")));
     }
+
+    #[test]
+    fn rejects_empty_author_and_whitespace_name() {
+        assert_eq!(
+            parse_profile(&GOOD.replace("\"neo\"", "\"   \"")),
+            Err(ValidationError::Field("author"))
+        );
+        assert_eq!(
+            parse_profile(&GOOD.replace("\"Cyberpunk\"", "\"   \"")),
+            Err(ValidationError::Field("name"))
+        );
+    }
 }
