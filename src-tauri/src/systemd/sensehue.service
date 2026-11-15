@@ -1,0 +1,17 @@
+[Unit]
+Description=SenseHue - DualSense lighting & telemetry daemon
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+# El binario `sensehue` arranca en la bandeja y expone la API local 127.0.0.1:17420
+# (activar "API local" en Ajustes) usada por el plugin Decky.
+ExecStart=/usr/bin/sensehue
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

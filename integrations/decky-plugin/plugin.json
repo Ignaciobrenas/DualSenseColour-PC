@@ -1,0 +1,10 @@
+{
+  "name": "SenseHue",
+  "author": "Ignacio Breñas",
+  "flags": [],
+  "publish": {
+    "tags": ["lighting", "dualsense", "controller"],
+    "description": "Controla SenseHue (perfiles, batería de 1-4 mandos y Modo Noche) desde el menú rápido de Steam Deck.",
+    "image": "https://raw.githubusercontent.com/Ignaciobrenas/SenseHue/main/logo.svg"
+  }
+}
