@@ -260,4 +260,18 @@ mod tests {
         };
         assert_eq!(s.ratio(), 0.0);
     }
+
+    #[test]
+    fn over_max_rpm_clamps_ratio_and_preserves_shift_light() {
+        let s = RpmSample {
+            rpm: 12500.0,
+            max_rpm: 10000.0,
+            pit_limiter: false,
+            yellow_flag: false,
+        };
+        assert_eq!(s.ratio(), 1.0);
+        let frame = rpm_frame(&s);
+        assert_eq!(frame.player_mask, Some(0b11111));
+        assert!(frame.blink);
+    }
 }
