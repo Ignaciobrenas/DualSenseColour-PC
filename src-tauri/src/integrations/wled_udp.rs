@@ -60,4 +60,10 @@ mod tests {
         let (n, _) = mock.recv_from(&mut buf).await.unwrap();
         assert_eq!(&buf[..n], &[2, 2, 9, 8, 7, 9, 8, 7]);
     }
+
+    #[test]
+    fn drgb_preserves_wait_timeout_byte_per_packet() {
+        let packet = build_drgb_packet(RgbColor::new(12, 34, 56), 1, 7);
+        assert_eq!(packet, vec![2, 7, 12, 34, 56]);
+    }
 }
