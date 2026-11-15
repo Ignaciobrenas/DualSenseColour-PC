@@ -139,4 +139,11 @@ mod tests {
         assert_eq!(battery_to_player_led_count(80), 4);
         assert_eq!(battery_to_player_led_count(100), 5);
     }
+
+    #[test]
+    fn trigger_preset_off_uses_release_mode_opcode() {
+        let mut expected = [0u8; 11];
+        expected[0] = 0x05;
+        assert_eq!(encode_trigger_effect(TriggerPreset::Off), expected);
+    }
 }
