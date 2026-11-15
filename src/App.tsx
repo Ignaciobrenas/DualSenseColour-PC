@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   AlertCircle,
   Battery,
@@ -23,6 +23,7 @@ import { useController } from './hooks/useController';
 import { formatFriendlyError, rgbToHex } from './types/controller';
 
 const TERMS_STORAGE_KEY = 'sensehue_terms_accepted_v2';
+const NOTIFICATION_AUTO_DISMISS_MS = 5000;
 
 type ActiveTab = 'lighting' | 'diagnostics' | 'ecosystem' | 'discover';
 
@@ -102,6 +103,27 @@ export function App() {
       batteryPercent !== null &&
       batteryPercent <= 20 &&
       dismissedLowAt !== batteryPercent);
+
+  const dismissLowNotification = useCallback(() => {
+    dismissLowBatteryAlert();
+    setDismissedLowAt(batteryPercent);
+  }, [dismissLowBatteryAlert, batteryPercent]);
+
+  useEffect(() => {
+    if (!shouldShowInlineLowAlert) {
+      return;
+    }
+    const timer = window.setTimeout(dismissLowNotification, NOTIFICATION_AUTO_DISMISS_MS);
+    return () => window.clearTimeout(timer);
+  }, [shouldShowInlineLowAlert, lowBatteryAlert, batteryPercent, dismissLowNotification]);
+
+  useEffect(() => {
+    if (!error) {
+      return;
+    }
+    const timer = window.setTimeout(clearError, NOTIFICATION_AUTO_DISMISS_MS);
+    return () => window.clearTimeout(timer);
+  }, [error, clearError]);
 
   return (
     <main className="glass-shell flex h-screen w-screen flex-col justify-between overflow-hidden rounded-[22px] text-slate-100">
@@ -247,11 +269,9 @@ export function App() {
             </div>
             <button
               type="button"
+              data-testid="low-battery-close-btn"
               aria-label="Ocultar aviso de batería baja"
-              onClick={() => {
-                dismissLowBatteryAlert();
-                setDismissedLowAt(batteryPercent);
-              }}
+              onClick={dismissLowNotification}
               className="rounded p-0.5 text-amber-200/80 hover:bg-white/10 hover:text-white"
             >
               <X className="h-3 w-3" aria-hidden="true" />
@@ -288,6 +308,7 @@ export function App() {
               </button>
               <button
                 type="button"
+                data-testid="friendly-error-close-btn"
                 aria-label="Cerrar aviso"
                 onClick={clearError}
                 className="rounded p-1 text-rose-200/80 hover:bg-white/10 hover:text-white"

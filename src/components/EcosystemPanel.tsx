@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   BellRing,
   Cpu,
@@ -9,6 +9,7 @@ import {
   ShieldAlert,
   Volume2,
   Wifi,
+  X,
 } from 'lucide-react';
 import type { AppConfig } from '../types/controller';
 
@@ -31,17 +32,26 @@ export function EcosystemPanel({
 }: EcosystemPanelProps) {
   const [openRgbInput, setOpenRgbInput] = useState(config.openrgb_addr);
   const [wledInput, setWledInput] = useState(config.wled_addr);
-  const [bridgeFeedback, setBridgeFeedback] = useState<string | null>(null);
-  const [bridgeIsError, setBridgeIsError] = useState(false);
+  const [bridgeFeedback, setBridgeFeedback] = useState<{
+    id: number;
+    message: string;
+    isError: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!bridgeFeedback) {
+      return;
+    }
+    const timer = window.setTimeout(() => setBridgeFeedback(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [bridgeFeedback]);
 
   const runBridgeTest = async (fn: () => Promise<string>) => {
     try {
       const msg = await fn();
-      setBridgeIsError(false);
-      setBridgeFeedback(msg);
+      setBridgeFeedback({ id: Date.now(), message: msg, isError: false });
     } catch (err) {
-      setBridgeIsError(true);
-      setBridgeFeedback(String(err));
+      setBridgeFeedback({ id: Date.now(), message: String(err), isError: true });
     }
   };
 
@@ -182,16 +192,26 @@ export function EcosystemPanel({
         </div>
 
         {bridgeFeedback && (
-          <p
+          <div
+            role="status"
             data-testid="bridge-feedback"
-            className={`font-mono-tabular rounded-lg border px-2 py-1 text-[9.5px] ${
-              bridgeIsError
+            className={`font-mono-tabular flex items-center justify-between gap-2 rounded-lg border px-2 py-1 text-[9.5px] ${
+              bridgeFeedback.isError
                 ? 'border-amber-400/30 bg-amber-500/10 text-amber-200'
                 : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
             }`}
           >
-            {bridgeFeedback}
-          </p>
+            <span className="min-w-0 truncate">{bridgeFeedback.message}</span>
+            <button
+              type="button"
+              data-testid="bridge-feedback-close-btn"
+              aria-label="Cerrar aviso"
+              onClick={() => setBridgeFeedback(null)}
+              className="shrink-0 rounded p-0.5 opacity-80 hover:bg-white/10 hover:opacity-100"
+            >
+              <X className="h-3 w-3" aria-hidden="true" />
+            </button>
+          </div>
         )}
       </div>
 
