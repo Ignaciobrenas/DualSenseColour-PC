@@ -145,6 +145,7 @@ pub fn run() {
             }
 
             commands::spawn_hotplug_monitor(app.handle().clone(), app_state.clone());
+            commands::spawn_game_integrations(app_state.clone());
             Ok(())
         })
         .on_window_event(|window, event| {

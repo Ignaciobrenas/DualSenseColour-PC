@@ -6,6 +6,7 @@
 
 pub mod lol_live;
 pub mod openrgb_client;
+pub mod runtime;
 pub mod sim_telemetry;
 pub mod valve_gsi;
 pub mod wled_udp;

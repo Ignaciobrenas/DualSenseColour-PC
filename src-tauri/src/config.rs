@@ -33,6 +33,8 @@ pub struct AppConfig {
     pub left_trigger: TriggerPreset,
     pub right_trigger: TriggerPreset,
     pub local_api_enabled: bool,
+    /// Activa los listeners de juegos (F1/Forza UDP y Valve GSI en loopback).
+    pub game_integrations_enabled: bool,
     pub game_profiles: Vec<GameProfileRule>,
 }
 
@@ -79,6 +81,7 @@ impl Default for AppConfig {
             left_trigger: TriggerPreset::Off,
             right_trigger: TriggerPreset::Off,
             local_api_enabled: false,
+            game_integrations_enabled: false,
             game_profiles: default_game_profiles(),
         }
     }

@@ -119,6 +119,28 @@ pub fn parse_f1_car_telemetry(packet: &[u8]) -> Result<u16, TelemetryError> {
     Ok(u16_at(packet, rpm_off))
 }
 
+/// Parsea `CarStatusData` de F1 (55 bytes por coche) → `(max_rpm, pit_limiter_activo)`.
+pub fn parse_f1_car_status(packet: &[u8]) -> Result<(u16, bool), TelemetryError> {
+    if packet.len() < F1_HEADER_LEN {
+        return Err(TelemetryError::TooShort {
+            expected: F1_HEADER_LEN,
+            got: packet.len(),
+        });
+    }
+    if packet[6] != F1_PACKET_CAR_STATUS {
+        return Err(TelemetryError::Unsupported("no es CarStatusData"));
+    }
+    let car = F1_HEADER_LEN + packet[27] as usize * 55;
+    let max_off = car + 17;
+    if packet.len() < max_off + 2 {
+        return Err(TelemetryError::TooShort {
+            expected: max_off + 2,
+            got: packet.len(),
+        });
+    }
+    Ok((u16_at(packet, max_off), packet[car + 4] != 0))
+}
+
 /// Parsea el paquete UDP "Data Out" Dash de Forza Motorsport/Horizon (sled + dash).
 ///
 /// Offsets (little endian): `EngineMaxRpm` f32 @8, `EngineIdleRpm` f32 @12, `CurrentEngineRpm` f32 @16.
@@ -163,6 +185,17 @@ mod tests {
     fn parses_f1_player_rpm_from_recorded_layout() {
         assert_eq!(parse_f1_car_telemetry(&f1_packet(3, 11_800)), Ok(11_800));
         assert_eq!(parse_f1_car_telemetry(&f1_packet(0, 4_200)), Ok(4_200));
+    }
+
+    #[test]
+    fn parses_f1_car_status_max_rpm_and_pit_limiter() {
+        let mut p = vec![0u8; F1_HEADER_LEN + 22 * 55];
+        p[6] = F1_PACKET_CAR_STATUS;
+        p[27] = 2;
+        let car = F1_HEADER_LEN + 2 * 55;
+        p[car + 4] = 1;
+        p[car + 17..car + 19].copy_from_slice(&13_500u16.to_le_bytes());
+        assert_eq!(parse_f1_car_status(&p), Ok((13_500, true)));
     }
 
     #[test]
