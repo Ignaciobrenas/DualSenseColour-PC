@@ -159,4 +159,11 @@ mod tests {
             assert!(gsi_frame(&s, 0, None).is_none());
         }
     }
+
+    #[test]
+    fn bomb_countdown_clamps_out_of_range_values() {
+        assert_eq!(bomb_blink_period_ms(Some(-5.0)), 150);
+        assert_eq!(bomb_blink_period_ms(Some(120.0)), 1000);
+        assert_eq!(bomb_blink_period_ms(None), 1000);
+    }
 }
