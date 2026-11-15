@@ -482,4 +482,19 @@ mod tests {
         assert_eq!(output.mic_led, MicLedState::On);
         assert_eq!(output.left_trigger, TriggerPreset::HairTrigger);
     }
+
+    #[test]
+    fn legacy_json_preserves_autostart_tray_and_safe_defaults() {
+        let dir = tempfile::tempdir().expect("tempdir created");
+        let path = dir.path().join("legacy.json");
+        fs::write(&path, r#"{"brightness":55}"#).expect("seed written");
+
+        let loaded = AppConfig::load_from_path(&path).expect("legacy json loads");
+        assert_eq!(loaded.brightness, 55);
+        assert!(loaded.apply_on_connect);
+        assert!(loaded.close_to_tray);
+        assert!(loaded.low_battery_alerts);
+        assert!(loaded.sync_all_controllers);
+        assert!(!loaded.local_api_enabled);
+    }
 }
