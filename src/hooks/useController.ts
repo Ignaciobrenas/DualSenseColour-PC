@@ -78,6 +78,12 @@ export function useController(): ControllerHook {
   const lastSentAtRef = useRef<number>(0);
   const pendingTimerRef = useRef<number | null>(null);
   const latestPayloadRef = useRef<{ color: RgbColor; brightness: number } | null>(null);
+  const configRef = useRef<AppConfig>(DEFAULT_CONFIG);
+  const triggerReqSeqRef = useRef<number>(0);
+
+  useEffect(() => {
+    configRef.current = config;
+  }, [config]);
 
   useEffect(() => {
     document.documentElement.style.setProperty(
@@ -306,11 +312,9 @@ export function useController(): ControllerHook {
 
   const updatePreferences = useCallback(
     async (patch: Partial<AppConfig>) => {
-      let nextConfig: AppConfig = DEFAULT_CONFIG;
-      setConfig((prev) => {
-        nextConfig = { ...prev, ...patch };
-        return nextConfig;
-      });
+      const nextConfig: AppConfig = { ...configRef.current, ...patch };
+      configRef.current = nextConfig;
+      setConfig(nextConfig);
 
       if (!isTauriRuntime()) {
         return;
@@ -318,6 +322,7 @@ export function useController(): ControllerHook {
 
       try {
         const saved = await invoke<AppConfig>('save_config', { config: nextConfig });
+        configRef.current = saved;
         setConfig(saved);
         setError(null);
       } catch (err) {
@@ -328,13 +333,18 @@ export function useController(): ControllerHook {
   );
 
   const updateEffectMode = useCallback(async (mode: LightingEffectMode) => {
-    setConfig((prev) => ({ ...prev, effect_mode: mode }));
+    setConfig((prev) => {
+      const next = { ...prev, effect_mode: mode };
+      configRef.current = next;
+      return next;
+    });
     if (!isTauriRuntime()) {
       return;
     }
 
     try {
       const updated = await invoke<AppConfig>('set_effect_mode', { mode });
+      configRef.current = updated;
       setConfig(updated);
       setError(null);
     } catch (err) {
@@ -344,17 +354,29 @@ export function useController(): ControllerHook {
 
   const updateAdaptiveTriggers = useCallback(
     async (left: TriggerPreset, right: TriggerPreset) => {
-      setConfig((prev) => ({ ...prev, left_trigger: left, right_trigger: right }));
+      const reqSeq = ++triggerReqSeqRef.current;
+      const optimistic: AppConfig = {
+        ...configRef.current,
+        left_trigger: left,
+        right_trigger: right,
+      };
+      configRef.current = optimistic;
+      setConfig(optimistic);
       if (!isTauriRuntime()) {
         return;
       }
 
       try {
         const updated = await invoke<AppConfig>('set_adaptive_triggers', { left, right });
-        setConfig(updated);
-        setError(null);
+        if (reqSeq === triggerReqSeqRef.current) {
+          configRef.current = updated;
+          setConfig(updated);
+          setError(null);
+        }
       } catch (err) {
-        setError(String(err));
+        if (reqSeq === triggerReqSeqRef.current) {
+          setError(String(err));
+        }
       }
     },
     [],

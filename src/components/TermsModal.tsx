@@ -88,8 +88,8 @@ export function TermsModal({
           <p>
             <strong>5. Marcas, gráficos propios y licencias OSS:</strong> DualSense y PlayStation son
             marcas registradas de Sony Interactive Entertainment Inc. Proyecto independiente con
-            ilustración vectorial 100 % original sin logos de terceros. Usa librerías MIT/Apache-2.0
-            (Tauri, React, hidapi, tokio, serde, Lucide).
+            vista previa propia editada sin logotipos ni símbolos de terceros. Usa librerías
+            MIT/Apache-2.0 (Tauri, React, hidapi, tokio, serde, Lucide).
           </p>
           <div className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-slate-950/30 px-2.5 py-1.5 text-[10px] text-slate-300 backdrop-blur-sm">
             <span className="flex items-center gap-1.5">

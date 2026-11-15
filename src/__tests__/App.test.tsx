@@ -227,4 +227,35 @@ describe('App integration', () => {
     fireEvent.click(screen.getByTestId('controller-sync-all-btn'));
     expect(onSelect).toHaveBeenCalledWith('serial:SN-1', true);
   });
+
+  it('cycles all 7 L2/R2 adaptive trigger presets and resets back to Off cleanly', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByTestId('preset-cyber-cyan'));
+    fireEvent.click(screen.getByTestId('tab-diagnostics'));
+
+    const presets = [
+      'rigid',
+      'weapon_click',
+      'pulse',
+      'hair_trigger',
+      'dual_stage',
+      'progressive_pedal',
+      'off',
+    ] as const;
+
+    for (const id of presets) {
+      fireEvent.click(screen.getByTestId(`trigger-left-${id}`));
+      expect(screen.getByTestId(`trigger-left-${id}`)).toHaveAttribute('aria-pressed', 'true');
+
+      fireEvent.click(screen.getByTestId(`trigger-right-${id}`));
+      expect(screen.getByTestId(`trigger-right-${id}`)).toHaveAttribute('aria-pressed', 'true');
+    }
+
+    // Toggling preferences must keep active custom color and trigger choices intact
+    fireEvent.click(screen.getByTestId('trigger-left-pulse'));
+    fireEvent.click(screen.getByTestId('toggle-battery-bar'));
+    expect(screen.getByTestId('trigger-left-pulse')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('dualsense-preview').getAttribute('data-color')).toBe('#00F0FF');
+  });
 });

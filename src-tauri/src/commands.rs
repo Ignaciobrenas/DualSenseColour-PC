@@ -1254,6 +1254,19 @@ mod tests {
         let imported = svc.import_profile_json(&exported).expect("import succeeds");
         assert_eq!(imported.effect_mode, LightingEffectMode::Spectrum);
         assert_eq!(imported.right_trigger, TriggerPreset::WeaponClick);
+
+        // Switching back to (Off, Off) must emit explicit 0x05 trigger-release HID packet
+        transport.clear_history();
+        let reset_cfg = svc
+            .set_adaptive_triggers(TriggerPreset::Off, TriggerPreset::Off)
+            .expect("triggers reset to Off");
+        assert_eq!(reset_cfg.left_trigger, TriggerPreset::Off);
+        assert_eq!(reset_cfg.right_trigger, TriggerPreset::Off);
+        let reports = transport.sent_reports();
+        let last = reports.last().expect("HID report emitted on trigger Off");
+        assert_eq!(last.bytes[1] & 0x0C, 0x0C);
+        assert_eq!(last.bytes[11], 0x05);
+        assert_eq!(last.bytes[22], 0x05);
     }
 
     #[test]

@@ -10,13 +10,13 @@ SenseHue es software gratuito y de código abierto distribuido bajo la Licencia 
 Esta aplicación se comunica exclusivamente mediante reportes HID estándar de entrada/salida (USB 0x02 y Bluetooth 0x31 protegido mediante IEEE CRC-32 semilla 0xA2) con hardware compatible DualSense (0x054C:0x0CE6) y DualSense Edge (0x054C:0x0DF2), sin modificar el firmware ni escribir en la memoria flash del dispositivo. Las integraciones con juegos y hardware RGB (F1/Forza UDP, Valve GSI, LoL Live API, OpenRGB SDK y WLED UDP) consumen únicamente sockets o APIs locales oficiales, sin inyección de DLLs ni lectura de memoria de procesos.
 
 3. PRIVACIDAD OFFLINE Y PERFILES COMUNITARIOS (.sensehue)
-SenseHue opera 100 % offline por defecto. Todos los recursos de la interfaz (incluida la ilustración vectorial original del mando) están embebidos en el ejecutable sin rastreadores ni telemetría externa. Si el usuario decide actualizar el catálogo en la pestaña Discover, los perfiles descargados se validan estrictamente como datos JSON de solo configuración, sin scripts ni comandos ejecutables.
+SenseHue opera 100 % offline por defecto. Todos los recursos de la interfaz (incluida la vista previa propia editada sin logotipos de terceros) están embebidos en el ejecutable sin rastreadores ni telemetría externa. Si el usuario decide actualizar el catálogo en la pestaña Discover, los perfiles descargados se validan estrictamente como datos JSON de solo configuración, sin scripts ni comandos ejecutables.
 
 4. AVISO DE FOTOSENSIBILIDAD Y GATILLOS ADAPTATIVOS
 Algunos efectos dinámicos (pulso, espectro, telemetría de juegos) generan cambios rápidos o parpadeos LED (limitados preventivamente por software). Asimismo, los perfiles de gatillos adaptativos aplican resistencia mecánica física en los gatillos L2/R2. Si experimentas molestias visuales, mareos, fotosensibilidad o fatiga en dedos/manos, desactiva los efectos dinámicos o pon los gatillos en modo «Libre» inmediatamente.
 
 5. MARCAS REGISTRADAS Y ACTIVOS PROPIOS
-«PlayStation», «PS5» y «DualSense» son marcas registradas de Sony Interactive Entertainment Inc. Su mención es estrictamente nominativa y descriptiva de compatibilidad. SenseHue es un proyecto independiente, NO está afiliado, patrocinado ni respaldado por Sony Interactive Entertainment Inc., y NO incluye logotipos oficiales, símbolos registrados ni material fotográfico de terceros.
+«PlayStation», «PS5» y «DualSense» son marcas registradas de Sony Interactive Entertainment Inc. Su mención es estrictamente nominativa y descriptiva de compatibilidad. SenseHue es un proyecto independiente, NO está afiliado, patrocinado ni respaldado por Sony Interactive Entertainment Inc., y NO incluye logotipos oficiales, símbolos de botón registrados ni iconos de marca de terceros.
 
 6. ATRIBUCIONES OPEN-SOURCE (MIT / Apache-2.0)
 SenseHue utiliza bibliotecas open-source compatibles con MIT/Apache-2.0: Tauri v2, hidapi, tokio, serde, crc32fast, thiserror, tauri-plugin-autostart, tauri-plugin-notification, React, Tailwind CSS y Lucide Icons.
@@ -32,13 +32,13 @@ SenseHue is free, open-source software distributed under the MIT License. It is 
 This utility communicates locally with compatible DualSense (0x054C:0x0CE6) and DualSense Edge (0x054C:0x0DF2) controllers strictly via standard HID output and input reports (USB 0x02 and Bluetooth 0x31 protected by seed 0xA2 IEEE CRC-32). It does not flash controller firmware or alter internal controller memory. Game and RGB integrations (F1/Forza UDP, Valve GSI, LoL Live API, OpenRGB SDK, WLED UDP) use local official sockets/APIs only, with zero DLL injection or process memory reading.
 
 3. OFFLINE PRIVACY & COMMUNITY PROFILES (.sensehue)
-SenseHue operates completely offline by default with zero telemetry or trackers. All UI assets (including original vector controller artwork) are bundled locally. Optional community `.sensehue` profiles fetched from Discover are strictly schema-validated JSON data only (no scripts or executable code).
+SenseHue operates completely offline by default with zero telemetry or trackers. All UI assets (including the custom logo-free edited controller preview) are bundled locally. Optional community `.sensehue` profiles fetched from Discover are strictly schema-validated JSON data only (no scripts or executable code).
 
 4. PHOTOSENSITIVITY & ADAPTIVE TRIGGER RESISTANCE WARNING
 Dynamic lighting modes and game telemetry effects may produce flashing light patterns (software rate-limited as a precaution), and adaptive trigger presets apply physical mechanical resistance to L2/R2. Discontinue dynamic effects or set triggers to "Off" immediately if you experience visual discomfort, photosensitivity symptoms, or hand/finger fatigue.
 
 5. TRADEMARK DISCLAIMER & ORIGINAL ARTWORK
-"PlayStation", "PS5", and "DualSense" are registered trademarks of Sony Interactive Entertainment Inc., referenced solely for descriptive compatibility (nominative fair use). SenseHue is an independent project not affiliated with, endorsed by, or sponsored by Sony Interactive Entertainment Inc., and uses zero third-party logos, trademarked button glyphs, or promotional hardware photography.
+"PlayStation", "PS5", and "DualSense" are registered trademarks of Sony Interactive Entertainment Inc., referenced solely for descriptive compatibility (nominative fair use). SenseHue is an independent project not affiliated with, endorsed by, or sponsored by Sony Interactive Entertainment Inc., and uses zero third-party logos, trademarked button glyphs, or brand icons.
 
 6. OPEN-SOURCE ATTRIBUTIONS (MIT / Apache-2.0)
 Built with open-source components under MIT/Apache-2.0 licenses, including Tauri v2, hidapi, tokio, serde, crc32fast, thiserror, React, Tailwind CSS, and Lucide Icons.

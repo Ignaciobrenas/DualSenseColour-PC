@@ -133,10 +133,14 @@ export function DiagnosticsPanel({
 
       {/* Adaptive Triggers Probador */}
       <div className="glass-card rounded-2xl p-2.5">
-        <div className="mb-1.5 flex items-center justify-between">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-200">
             <Zap className="h-3.5 w-3.5 text-violet-400" aria-hidden="true" />
             Probador Gatillos Adaptativos (7 Modos)
+          </span>
+          <span className="font-mono-tabular text-[9.5px] text-slate-300">
+            L2:{TRIGGER_OPTIONS.find((o) => o.id === config.left_trigger)?.label ?? 'Libre'} · R2:
+            {TRIGGER_OPTIONS.find((o) => o.id === config.right_trigger)?.label ?? 'Libre'}
           </span>
         </div>
 

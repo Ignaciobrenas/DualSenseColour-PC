@@ -334,13 +334,17 @@ impl<T: HidTransport> ControllerMonitor<T> {
                 }
             };
 
-            if is_new && item.detected.transport == TransportType::Bluetooth {
+            if item.detected.transport == TransportType::Bluetooth
+                && (is_new || item.telemetry.is_none())
+            {
                 if let Err(err) = self
                     .transport
                     .wake_bluetooth_controller(&item.detected.path)
                 {
-                    warn!(%err, path = %item.detected.path, "No se pudo despertar el mando Bluetooth");
-                    events.push(ControllerEvent::TransportError(err.to_string()));
+                    if is_new {
+                        warn!(%err, path = %item.detected.path, "No se pudo despertar el mando Bluetooth");
+                        events.push(ControllerEvent::TransportError(err.to_string()));
+                    }
                 }
             }
 

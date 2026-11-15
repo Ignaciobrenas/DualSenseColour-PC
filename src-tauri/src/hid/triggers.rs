@@ -41,11 +41,11 @@ pub const fn encode_trigger_effect(preset: TriggerPreset) -> [u8; 11] {
     match preset {
         TriggerPreset::Off => [0x05, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         TriggerPreset::Rigid => [0x01, 0x00, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0],
-        TriggerPreset::WeaponClick => [0x02, 0x90, 0x0A, 0xFF, 0, 0, 0, 0, 0, 0, 0],
-        TriggerPreset::Pulse => [0x06, 0x90, 0xB0, 0x18, 0, 0, 0, 0, 0, 0, 0],
-        TriggerPreset::HairTrigger => [0x02, 0x20, 0x30, 0xFF, 0, 0, 0, 0, 0, 0, 0],
-        TriggerPreset::DualStage => [0x02, 0xCC, 0xE0, 0xFF, 0, 0, 0, 0, 0, 0, 0],
-        TriggerPreset::ProgressivePedal => [0x01, 0x30, 0x80, 0, 0, 0, 0, 0, 0, 0, 0],
+        TriggerPreset::WeaponClick => [0x02, 0x38, 0x70, 0xFF, 0, 0, 0, 0, 0, 0, 0],
+        TriggerPreset::Pulse => [0x06, 0x14, 0x3F, 0x30, 0, 0, 0, 0, 0, 0, 0],
+        TriggerPreset::HairTrigger => [0x02, 0x20, 0x45, 0xFF, 0, 0, 0, 0, 0, 0, 0],
+        TriggerPreset::DualStage => [0x02, 0x78, 0xA4, 0xFF, 0, 0, 0, 0, 0, 0, 0],
+        TriggerPreset::ProgressivePedal => [0x01, 0x28, 0x98, 0, 0, 0, 0, 0, 0, 0, 0],
     }
 }
 
@@ -108,10 +108,22 @@ mod tests {
     fn competitive_profiles_use_expected_modes_and_zones() {
         let hair = encode_trigger_effect(TriggerPreset::HairTrigger);
         assert_eq!((hair[0], hair[1]), (0x02, 0x20));
+        assert!(hair[1] < hair[2]);
+
+        let weapon = encode_trigger_effect(TriggerPreset::WeaponClick);
+        assert_eq!(weapon[0], 0x02);
+        assert!(weapon[1] < weapon[2]);
+
+        let pulse = encode_trigger_effect(TriggerPreset::Pulse);
+        assert_eq!(pulse[0], 0x06);
+        assert!((10..=40).contains(&pulse[1]));
+
         let dual = encode_trigger_effect(TriggerPreset::DualStage);
-        // El clic empieza al ~80 % del recorrido (0xCC / 0xFF).
-        assert_eq!(dual[1], 0xCC);
-        assert!(f32::from(dual[1]) / 255.0 >= 0.79);
+        // El clic empieza dentro del rango físico válido con start < end.
+        assert_eq!(dual[0], 0x02);
+        assert_eq!(dual[1], 0x78);
+        assert!(dual[1] < dual[2]);
+
         let pedal = encode_trigger_effect(TriggerPreset::ProgressivePedal);
         assert_eq!(pedal[0], 0x01);
         // Los perfiles serializan en snake_case para .sensehue.
