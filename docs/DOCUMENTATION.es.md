@@ -200,7 +200,7 @@ sensehue-cli --help
 ## 9. Arquitectura y Estructura del Proyecto
 
 ```text
-DualSenseColour/
+SenseHue/
 ├── src/                         # Interfaz React 18 + TypeScript + Tailwind v4
 │   ├── App.tsx                  # Shell frameless, pestañas y banner descartable de batería
 │   ├── hooks/useController.ts   # Puente IPC con Tauri, control secuencial de gatillos y refs síncronas

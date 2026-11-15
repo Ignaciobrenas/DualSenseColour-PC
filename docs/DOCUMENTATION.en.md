@@ -200,7 +200,7 @@ sensehue-cli --help
 ## 9. Architecture & Project Structure
 
 ```text
-DualSenseColour/
+SenseHue/
 ├── src/                         # React 18 + TypeScript + Tailwind v4 UI
 │   ├── App.tsx                  # Main window shell, tabs, dismissible battery alert banner
 │   ├── hooks/useController.ts   # Tauri IPC bridge, monotonic trigger sequence guard, state sync
