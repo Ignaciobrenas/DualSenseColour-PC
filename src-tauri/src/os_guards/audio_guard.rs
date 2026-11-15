@@ -106,4 +106,23 @@ mod tests {
         );
         assert!(audio.sets.is_empty());
     }
+
+    #[test]
+    fn updates_remembered_device_when_user_switches_manually() {
+        let mut audio = FakeAudio {
+            current: "Altavoces HDMI".into(),
+            sets: vec![],
+        };
+        let mut guard = AudioGuard::default();
+        assert_eq!(
+            guard.check(&mut audio),
+            Ok(GuardAction::Remembered("Altavoces HDMI".into()))
+        );
+        audio.current = "Auriculares USB".into();
+        assert_eq!(
+            guard.check(&mut audio),
+            Ok(GuardAction::Remembered("Auriculares USB".into()))
+        );
+        assert!(audio.sets.is_empty());
+    }
 }
