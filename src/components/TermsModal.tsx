@@ -63,22 +63,22 @@ export function TermsModal({
         </div>
 
         <div className="relative flex-1 space-y-2 overflow-y-auto rounded-xl border border-white/[0.09] bg-white/[0.03] p-2.5 text-[11px] leading-relaxed text-slate-200/90 backdrop-blur-md">
-          <p className="font-semibold text-white">SenseHue v2.0.0 — Licencia MIT</p>
+          <p className="font-semibold text-white">SenseHue v3.0.0 — Licencia MIT</p>
           <p>
             <strong>1. Uso bajo licencia libre:</strong> Esta aplicación se ofrece gratuitamente y
             «tal cual» («AS IS») bajo licencia MIT, sin garantías implícitas.
           </p>
           <p>
-            <strong>2. Seguridad de hardware HID:</strong> Envía únicamente reportes estándar de
-            salida USB (<code className="text-sky-300">0x02</code>) y Bluetooth (
+            <strong>2. Seguridad HID & Zero Memory Injection:</strong> Envía únicamente reportes
+            estándar USB (<code className="text-sky-300">0x02</code>) y Bluetooth (
             <code className="text-sky-300">0x31</code> + CRC-32{' '}
-            <code className="text-sky-300">0xA2</code>) a mandos PS5 DualSense / Edge sin modificar
-            firmware ni flash interna.
+            <code className="text-sky-300">0xA2</code>) a DualSense / Edge. Los puentes de juegos y
+            RGB usan solo UDP/HTTP/TCP locales oficiales sin inyectar procesos.
           </p>
           <p>
-            <strong>3. 100 % offline y sin telemetría:</strong> Todos los recursos HTML/JS/CSS están
-            embebidos en el ejecutable. No depende de servidores locales ni externos y guarda tu
-            configuración en local de forma atómica.
+            <strong>3. Privacidad y perfiles validados:</strong> Funciona 100 % offline salvo si
+            refrescas voluntariamente perfiles <code className="text-sky-300">.sensehue</code> en
+            Discover, siempre validados con esquema estricto de datos sin código ejecutable.
           </p>
           <p>
             <strong>4. Marcas registradas:</strong> DualSense y PlayStation son marcas de Sony

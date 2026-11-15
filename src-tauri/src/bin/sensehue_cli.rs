@@ -25,7 +25,7 @@ pub enum CliAction {
 }
 
 const HELP_TEXT: &str = "\
-SenseHue CLI v2.0.0 — DualSense Lighting & Telemetry
+SenseHue CLI v3.0.0 — DualSense Lighting & Telemetry
 Uso:
   sensehue-cli --preset <id>                 Aplica un preset (playstation-blue, cyber-cyan, crimson-red, emerald, gold, violet)
   sensehue-cli --color <#RRGGBB> [--brightness <0..100>]  Aplica un color RGB personalizado

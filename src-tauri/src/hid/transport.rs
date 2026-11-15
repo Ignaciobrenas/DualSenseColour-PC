@@ -226,6 +226,12 @@ impl HidTransport for RealHidTransport {
         let mut len = device
             .read_timeout(buf, 65)
             .map_err(|e| Self::map_hid_error(&e))?;
+        if len == 0 {
+            // Reintento breve cuando el enlace Bluetooth acaba de despertar para capturar batería real.
+            len = device
+                .read_timeout(buf, 45)
+                .map_err(|e| Self::map_hid_error(&e))?;
+        }
         if len > 0 && len < 54 && buf.first() == Some(&0x01) {
             let mut feature_05 = [0u8; 64];
             feature_05[0] = 0x05;

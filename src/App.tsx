@@ -3,6 +3,9 @@ import {
   AlertCircle,
   Battery,
   BatteryCharging,
+  BatteryWarning,
+  Compass,
+  Cpu,
   RefreshCw,
   Sliders,
   Sparkles,
@@ -10,13 +13,17 @@ import {
 } from 'lucide-react';
 import { ColorControls } from './components/ColorControls';
 import { DiagnosticsPanel } from './components/DiagnosticsPanel';
+import { DiscoverPanel } from './components/DiscoverPanel';
 import { DualSensePreview } from './components/DualSensePreview';
+import { EcosystemPanel } from './components/EcosystemPanel';
 import { TermsModal } from './components/TermsModal';
 import { TitleBar } from './components/TitleBar';
 import { useController } from './hooks/useController';
 import { formatFriendlyError, rgbToHex } from './types/controller';
 
 const TERMS_STORAGE_KEY = 'sensehue_terms_accepted_v2';
+
+type ActiveTab = 'lighting' | 'diagnostics' | 'ecosystem' | 'discover';
 
 function shouldOpenTermsOnLaunch(): boolean {
   if (typeof window === 'undefined' || !('__TAURI_INTERNALS__' in window)) {
@@ -35,7 +42,10 @@ export function App() {
     config,
     presets,
     error,
+    lowBatteryAlert,
+    autostartEnabled,
     clearError,
+    dismissLowBatteryAlert,
     updateColor,
     applyPreset,
     turnOffLightbar,
@@ -45,12 +55,17 @@ export function App() {
     updateAdaptiveTriggers,
     exportProfileJson,
     importProfileJson,
+    installCommunityProfile,
+    testOpenRgbSync,
+    testWledSync,
+    toggleAutostart,
     resyncController,
     resetToDefaults,
   } = useController();
 
   const [isTermsOpen, setIsTermsOpen] = useState<boolean>(shouldOpenTermsOnLaunch);
-  const [activeTab, setActiveTab] = useState<'lighting' | 'diagnostics'>('lighting');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('lighting');
+  const [dismissedLowAt, setDismissedLowAt] = useState<number | null>(null);
 
   const handleAcceptTerms = () => {
     try {
@@ -67,14 +82,24 @@ export function App() {
     typeof status.battery_percent === 'number' ? status.battery_percent : null;
   const isCharging = status.charging_state === 'charging';
   const isFullBattery = status.charging_state === 'full';
+  const isDischarging = !isCharging && !isFullBattery;
   const batteryToneClass =
     batteryPercent === null
       ? 'border-white/10 bg-white/[0.04] text-slate-300'
       : batteryPercent >= 50
         ? 'border-emerald-400/25 bg-emerald-500/12 text-emerald-300'
-        : batteryPercent >= 20
+        : batteryPercent > 20
           ? 'border-amber-400/25 bg-amber-500/12 text-amber-300'
-          : 'border-rose-400/30 bg-rose-500/15 text-rose-300';
+          : 'border-rose-400/35 bg-rose-500/18 text-rose-200';
+
+  const shouldShowInlineLowAlert =
+    lowBatteryAlert !== null ||
+    (config.low_battery_alerts &&
+      status.connected &&
+      isDischarging &&
+      batteryPercent !== null &&
+      batteryPercent <= 20 &&
+      dismissedLowAt !== batteryPercent);
 
   return (
     <main className="glass-shell flex h-screen w-screen flex-col justify-between overflow-hidden rounded-[22px] text-slate-100">
@@ -85,11 +110,11 @@ export function App() {
       />
 
       <div className="flex flex-1 flex-col justify-between overflow-y-auto px-3.5 pt-1.5 pb-3">
-        {/* Dual-Mode Suite Switcher */}
+        {/* 4-Mode Suite Switcher */}
         <div
           role="tablist"
           aria-label="Secciones de SenseHue"
-          className="mb-1.5 grid grid-cols-2 gap-1.5 rounded-xl border border-white/[0.07] bg-slate-950/25 p-1 backdrop-blur-md"
+          className="mb-1.5 grid grid-cols-4 gap-1 rounded-xl border border-white/[0.08] bg-slate-950/30 p-1 backdrop-blur-md"
         >
           <button
             type="button"
@@ -97,14 +122,14 @@ export function App() {
             aria-selected={activeTab === 'lighting'}
             data-testid="tab-lighting"
             onClick={() => setActiveTab('lighting')}
-            className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-1 text-[11px] font-medium transition-all ${
+            className={`inline-flex items-center justify-center gap-1 rounded-lg py-1 text-[10.5px] font-medium transition-all ${
               activeTab === 'lighting'
                 ? 'bg-white/14 text-white shadow-[0_0_12px_rgba(0,229,255,0.16)]'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-300 hover:text-white'
             }`}
           >
             <Sparkles className="h-3 w-3 text-cyan-400" aria-hidden="true" />
-            Iluminación & Efectos
+            Luz
           </button>
           <button
             type="button"
@@ -112,14 +137,44 @@ export function App() {
             aria-selected={activeTab === 'diagnostics'}
             data-testid="tab-diagnostics"
             onClick={() => setActiveTab('diagnostics')}
-            className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-1 text-[11px] font-medium transition-all ${
+            className={`inline-flex items-center justify-center gap-1 rounded-lg py-1 text-[10.5px] font-medium transition-all ${
               activeTab === 'diagnostics'
                 ? 'bg-white/14 text-white shadow-[0_0_12px_rgba(168,85,247,0.18)]'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-300 hover:text-white'
             }`}
           >
             <Sliders className="h-3 w-3 text-violet-400" aria-hidden="true" />
-            Diagnóstico & Pro
+            Pro
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'ecosystem'}
+            data-testid="tab-ecosystem"
+            onClick={() => setActiveTab('ecosystem')}
+            className={`inline-flex items-center justify-center gap-1 rounded-lg py-1 text-[10.5px] font-medium transition-all ${
+              activeTab === 'ecosystem'
+                ? 'bg-white/14 text-white shadow-[0_0_12px_rgba(16,185,129,0.18)]'
+                : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            <Cpu className="h-3 w-3 text-emerald-400" aria-hidden="true" />
+            Ecosistema
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'discover'}
+            data-testid="tab-discover"
+            onClick={() => setActiveTab('discover')}
+            className={`inline-flex items-center justify-center gap-1 rounded-lg py-1 text-[10.5px] font-medium transition-all ${
+              activeTab === 'discover'
+                ? 'bg-white/14 text-white shadow-[0_0_12px_rgba(56,189,248,0.2)]'
+                : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            <Compass className="h-3 w-3 text-sky-400" aria-hidden="true" />
+            Discover
           </button>
         </div>
 
@@ -134,8 +189,8 @@ export function App() {
             micLed={config.mic_led}
             connected={status.connected}
           />
-          <p className="font-mono-tabular -mt-1 text-[11px] tracking-wider text-slate-400">
-            LIGHTBAR · <span className="text-slate-200">{activeHex}</span> · {config.brightness}%
+          <p className="font-mono-tabular -mt-1 text-[11px] tracking-wider text-slate-300">
+            LIGHTBAR · <span className="text-slate-100">{activeHex}</span> · {config.brightness}%
           </p>
           {status.connected && (
             <div
@@ -150,12 +205,50 @@ export function App() {
               <span>
                 Batería{' '}
                 {batteryPercent !== null
-                  ? `${batteryPercent}%${isCharging ? ' · Cargando' : isFullBattery ? ' · Completa' : ''}`
+                  ? `${batteryPercent}%${
+                      isCharging
+                        ? ' · Cargando'
+                        : isFullBattery
+                          ? ' · Completa'
+                          : batteryPercent <= 5
+                            ? ' · Crítica'
+                            : batteryPercent <= 20
+                              ? ' · Baja'
+                              : ''
+                    }`
                   : '· Leyendo...'}
               </span>
             </div>
           )}
         </div>
+
+        {/* Low Battery Warning Toast */}
+        {shouldShowInlineLowAlert && (
+          <div
+            role="status"
+            data-testid="low-battery-banner"
+            className="mb-1.5 flex items-center justify-between gap-2 rounded-xl border border-amber-400/35 bg-amber-950/45 px-2.5 py-1.5 text-[10.5px] text-amber-100 backdrop-blur-md"
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <BatteryWarning className="h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden="true" />
+              <p className="truncate font-medium">
+                {lowBatteryAlert?.body ??
+                  `Tu mando se está quedando sin batería (${batteryPercent}%). Conéctalo por USB pronto.`}
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label="Ocultar aviso de batería baja"
+              onClick={() => {
+                dismissLowBatteryAlert();
+                setDismissedLowAt(batteryPercent);
+              }}
+              className="rounded p-0.5 text-amber-200/80 hover:bg-white/10 hover:text-white"
+            >
+              <X className="h-3 w-3" aria-hidden="true" />
+            </button>
+          </div>
+        )}
 
         {/* Friendly HID Warning Toast */}
         {friendlyError && (
@@ -197,7 +290,7 @@ export function App() {
         )}
 
         {/* Active Suite Panel */}
-        {activeTab === 'lighting' ? (
+        {activeTab === 'lighting' && (
           <ColorControls
             config={config}
             presets={presets}
@@ -208,7 +301,8 @@ export function App() {
             onPreferencesChange={(patch) => void updatePreferences(patch)}
             onEffectModeChange={(mode) => void updateEffectMode(mode)}
           />
-        ) : (
+        )}
+        {activeTab === 'diagnostics' && (
           <DiagnosticsPanel
             status={status}
             config={config}
@@ -217,6 +311,19 @@ export function App() {
             onExportProfile={exportProfileJson}
             onImportProfile={importProfileJson}
           />
+        )}
+        {activeTab === 'ecosystem' && (
+          <EcosystemPanel
+            config={config}
+            autostartEnabled={autostartEnabled}
+            onPreferencesChange={(patch) => void updatePreferences(patch)}
+            onToggleAutostart={toggleAutostart}
+            onTestOpenRgb={testOpenRgbSync}
+            onTestWled={testWledSync}
+          />
+        )}
+        {activeTab === 'discover' && (
+          <DiscoverPanel onInstallProfile={installCommunityProfile} />
         )}
       </div>
 
