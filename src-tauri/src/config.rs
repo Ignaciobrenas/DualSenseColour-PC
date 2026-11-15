@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -14,6 +15,70 @@ use crate::hid::protocol::DualSenseOutputState;
 use crate::hid::triggers::{battery_to_player_led_count, gyro_indicator_color, TriggerPreset};
 
 const CONFIG_FILE_NAME: &str = "config.json";
+
+/// Independent lighting & adaptive trigger configuration for a single controller (`sn:...` or `path:...`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ControllerProfileConfig {
+    pub color: RgbColor,
+    pub brightness: u8,
+    pub preset_id: Option<String>,
+    pub player_leds: u8,
+    pub mic_led: MicLedState,
+    pub effect_mode: LightingEffectMode,
+    pub battery_bar_leds: bool,
+    pub left_trigger: TriggerPreset,
+    pub right_trigger: TriggerPreset,
+}
+
+impl Default for ControllerProfileConfig {
+    fn default() -> Self {
+        Self {
+            color: RgbColor::default(),
+            brightness: 100,
+            preset_id: Some("classic-blue".to_string()),
+            player_leds: 1,
+            mic_led: MicLedState::Off,
+            effect_mode: LightingEffectMode::Static,
+            battery_bar_leds: false,
+            left_trigger: TriggerPreset::Off,
+            right_trigger: TriggerPreset::Off,
+        }
+    }
+}
+
+impl ControllerProfileConfig {
+    /// Returns a clamped copy (`brightness <= 100`, `player_leds <= 5`).
+    #[must_use]
+    pub fn sanitized(mut self) -> Self {
+        self.brightness = self.brightness.min(100);
+        self.player_leds = self.player_leds.min(5);
+        self
+    }
+
+    /// Converts this controller profile into raw HID output report state.
+    #[must_use]
+    pub fn to_output_state_with_battery(
+        &self,
+        battery_percent: Option<u8>,
+        gyro_indicator_enabled: bool,
+    ) -> DualSenseOutputState {
+        let player_leds = match (self.battery_bar_leds, battery_percent) {
+            (true, Some(pct)) => battery_to_player_led_count(pct),
+            _ => self.player_leds.min(5),
+        };
+        let color = gyro_indicator_color(self.color, gyro_indicator_enabled);
+
+        DualSenseOutputState {
+            color,
+            brightness: self.brightness.min(100),
+            player_leds,
+            mic_led: self.mic_led,
+            left_trigger: self.left_trigger,
+            right_trigger: self.right_trigger,
+        }
+    }
+}
 
 /// Persistent user configuration stored atomically as JSON.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -50,6 +115,8 @@ pub struct AppConfig {
     /// Evita el secuestro automático de dispositivo de audio USB en Windows/Linux.
     pub usb_audio_guard_enabled: bool,
     pub game_profiles: Vec<GameProfileRule>,
+    /// Per-controller independent lighting & adaptive trigger overrides keyed by controller ID.
+    pub per_controller: BTreeMap<String, ControllerProfileConfig>,
 }
 
 fn default_game_profiles() -> Vec<GameProfileRule> {
@@ -105,6 +172,7 @@ impl Default for AppConfig {
             mic_mute_sync_enabled: false,
             usb_audio_guard_enabled: false,
             game_profiles: default_game_profiles(),
+            per_controller: BTreeMap::new(),
         }
     }
 }
@@ -121,7 +189,71 @@ impl AppConfig {
         if self.wled_addr.trim().is_empty() {
             self.wled_addr = "192.168.1.50:21324".to_string();
         }
+        for profile in self.per_controller.values_mut() {
+            *profile = profile.clone().sanitized();
+        }
         self
+    }
+
+    /// Extracts the top-level profile settings as a [`ControllerProfileConfig`].
+    #[must_use]
+    pub fn global_profile(&self) -> ControllerProfileConfig {
+        ControllerProfileConfig {
+            color: self.color,
+            brightness: self.brightness.min(100),
+            preset_id: self.preset_id.clone(),
+            player_leds: self.player_leds.min(5),
+            mic_led: self.mic_led,
+            effect_mode: self.effect_mode,
+            battery_bar_leds: self.battery_bar_leds,
+            left_trigger: self.left_trigger,
+            right_trigger: self.right_trigger,
+        }
+    }
+
+    /// Replaces top-level profile settings from `profile`.
+    pub fn set_global_profile(&mut self, profile: &ControllerProfileConfig) {
+        self.color = profile.color;
+        self.brightness = profile.brightness.min(100);
+        self.preset_id = profile.preset_id.clone();
+        self.player_leds = profile.player_leds.min(5);
+        self.mic_led = profile.mic_led;
+        self.effect_mode = profile.effect_mode;
+        self.battery_bar_leds = profile.battery_bar_leds;
+        self.left_trigger = profile.left_trigger;
+        self.right_trigger = profile.right_trigger;
+    }
+
+    /// Resolves effective controller profile (global when synced, or per-controller when independent).
+    #[must_use]
+    pub fn profile_for_controller(&self, controller_id: Option<&str>) -> ControllerProfileConfig {
+        if self.sync_all_controllers {
+            return self.global_profile();
+        }
+        match controller_id.and_then(|id| self.per_controller.get(id)) {
+            Some(custom) => custom.clone().sanitized(),
+            None => self.global_profile(),
+        }
+    }
+
+    /// Returns a view of [`AppConfig`] whose top-level profile reflects `controller_id`.
+    #[must_use]
+    pub fn effective_view_for(&self, controller_id: Option<&str>) -> Self {
+        let mut view = self.clone();
+        let resolved = self.profile_for_controller(controller_id);
+        view.set_global_profile(&resolved);
+        view
+    }
+
+    /// Converts settings for `controller_id` into HID output state.
+    #[must_use]
+    pub fn to_output_state_for(
+        &self,
+        controller_id: Option<&str>,
+        battery_percent: Option<u8>,
+    ) -> DualSenseOutputState {
+        self.profile_for_controller(controller_id)
+            .to_output_state_with_battery(battery_percent, self.gyro_indicator_enabled)
     }
 
     /// Converts persisted settings into the hardware report state expected by HID reports.
@@ -136,20 +268,8 @@ impl AppConfig {
         &self,
         battery_percent: Option<u8>,
     ) -> DualSenseOutputState {
-        let player_leds = match (self.battery_bar_leds, battery_percent) {
-            (true, Some(pct)) => battery_to_player_led_count(pct),
-            _ => self.player_leds.min(5),
-        };
-        let color = gyro_indicator_color(self.color, self.gyro_indicator_enabled);
-
-        DualSenseOutputState {
-            color,
-            brightness: self.brightness.min(100),
-            player_leds,
-            mic_led: self.mic_led,
-            left_trigger: self.left_trigger,
-            right_trigger: self.right_trigger,
-        }
+        self.global_profile()
+            .to_output_state_with_battery(battery_percent, self.gyro_indicator_enabled)
     }
 
     /// Resolves the OS-appropriate config file path (`%APPDATA%` on Windows, `~/.config` on Linux).
@@ -319,5 +439,47 @@ mod tests {
 
         let loaded = AppConfig::load_from_path(&path).expect("fallback succeeds");
         assert_eq!(loaded, AppConfig::default());
+    }
+
+    #[test]
+    fn per_controller_profiles_roundtrip_and_clamp() {
+        let dir = tempfile::tempdir().expect("tempdir created");
+        let path = dir.path().join("multi.json");
+
+        let mut cfg = AppConfig {
+            sync_all_controllers: false,
+            gyro_indicator_enabled: true,
+            ..Default::default()
+        };
+        cfg.per_controller.insert(
+            "sn:BT-2".to_string(),
+            ControllerProfileConfig {
+                color: RgbColor::new(255, 40, 80),
+                brightness: 150,
+                preset_id: Some("crimson-red".to_string()),
+                player_leds: 8,
+                mic_led: MicLedState::On,
+                effect_mode: LightingEffectMode::Spectrum,
+                battery_bar_leds: true,
+                left_trigger: TriggerPreset::HairTrigger,
+                right_trigger: TriggerPreset::WeaponClick,
+            },
+        );
+
+        cfg.save_to_path(&path).expect("save succeeds");
+        let reloaded = AppConfig::load_from_path(&path).expect("reload succeeds");
+        assert!(!reloaded.sync_all_controllers);
+        let profile = reloaded.profile_for_controller(Some("sn:BT-2"));
+        assert_eq!(profile.brightness, 100);
+        assert_eq!(profile.player_leds, 5);
+        assert_eq!(profile.effect_mode, LightingEffectMode::Spectrum);
+        assert_eq!(profile.left_trigger, TriggerPreset::HairTrigger);
+        assert_eq!(profile.right_trigger, TriggerPreset::WeaponClick);
+
+        let output = reloaded.to_output_state_for(Some("sn:BT-2"), Some(80));
+        assert_eq!(output.brightness, 100);
+        assert_eq!(output.player_leds, 4);
+        assert_eq!(output.mic_led, MicLedState::On);
+        assert_eq!(output.left_trigger, TriggerPreset::HairTrigger);
     }
 }

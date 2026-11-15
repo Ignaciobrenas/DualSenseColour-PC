@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import { ConnectionBadge } from '../components/ConnectionBadge';
-import { formatFriendlyError } from '../types/controller';
+import { ControllerSwitcher } from '../components/ControllerSwitcher';
+import { DEFAULT_CONFIG, formatFriendlyError } from '../types/controller';
 
 describe('App integration', () => {
   it('syncs preset clicks, custom HEX edits, and LED power-off with DualSensePreview', async () => {
@@ -165,5 +166,65 @@ describe('App integration', () => {
     const blocked = formatFriendlyError('Access denied opening HID interface');
     expect(blocked.title).toBe('Acceso bloqueado al mando');
     expect(blocked.detail).toContain('Steam Input');
+  });
+
+  it('switches between broadcast sync and individual USB/Bluetooth controllers', () => {
+    const onSelect = vi.fn();
+    render(
+      <ControllerSwitcher
+        config={{
+          ...DEFAULT_CONFIG,
+          sync_all_controllers: true,
+        }}
+        status={{
+          connected: true,
+          transport: 'usb',
+          model: 'DualSense',
+          serial_number: 'SN-1',
+          product_name: 'DualSense Wireless Controller',
+          battery_percent: 80,
+          charging_state: 'charging',
+          active_controller_id: 'serial:SN-1',
+          controllers: [
+            {
+              id: 'serial:SN-1',
+              slot: 1,
+              path: 'hid://usb/1',
+              transport: 'usb',
+              model: 'DualSense',
+              serial_number: 'SN-1',
+              product_name: 'DualSense USB',
+              battery_percent: 80,
+              charging_state: 'charging',
+            },
+            {
+              id: 'serial:SN-2',
+              slot: 2,
+              path: 'hid://bt/2',
+              transport: 'bluetooth',
+              model: 'DualSenseEdge',
+              serial_number: 'SN-2',
+              product_name: 'DualSense Edge BT',
+              battery_percent: 45,
+              charging_state: 'discharging',
+            },
+          ],
+        }}
+        onSelect={onSelect}
+      />
+    );
+
+    expect(screen.getByTestId('controller-switcher')).toBeInTheDocument();
+    expect(screen.getByTestId('controller-sync-all-btn')).toHaveTextContent('Todos (2)');
+    expect(screen.getByTestId('controller-slot-1')).toHaveTextContent('#1');
+    expect(screen.getByTestId('controller-slot-1')).toHaveTextContent('80%');
+    expect(screen.getByTestId('controller-slot-2')).toHaveTextContent('#2');
+    expect(screen.getByTestId('controller-slot-2')).toHaveTextContent('45%');
+
+    fireEvent.click(screen.getByTestId('controller-slot-2'));
+    expect(onSelect).toHaveBeenCalledWith('serial:SN-2', false);
+
+    fireEvent.click(screen.getByTestId('controller-sync-all-btn'));
+    expect(onSelect).toHaveBeenCalledWith('serial:SN-1', true);
   });
 });

@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { ColorControls } from './components/ColorControls';
+import { ControllerSwitcher } from './components/ControllerSwitcher';
 import { DiagnosticsPanel } from './components/DiagnosticsPanel';
 import { DiscoverPanel } from './components/DiscoverPanel';
 import { DualSensePreview } from './components/DualSensePreview';
@@ -59,6 +60,7 @@ export function App() {
     testOpenRgbSync,
     testWledSync,
     toggleAutostart,
+    selectController,
     resyncController,
     resetToDefaults,
   } = useController();
@@ -177,6 +179,13 @@ export function App() {
             Discover
           </button>
         </div>
+
+        {/* Multi-Controller Switcher (USB & Bluetooth Simultaneous Configuration) */}
+        <ControllerSwitcher
+          status={status}
+          config={config}
+          onSelect={(id, syncAll) => void selectController(id, syncAll)}
+        />
 
         {/* Hero Controller Visualizer */}
         <div className="relative flex flex-1 flex-col items-center justify-center">
