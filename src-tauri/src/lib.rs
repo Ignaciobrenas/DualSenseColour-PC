@@ -114,6 +114,7 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
         ))
+        .plugin(tauri_plugin_notification::init())
         .manage(app_state.clone())
         .setup(move |app| {
             #[cfg(target_os = "windows")]
@@ -167,6 +168,7 @@ pub fn run() {
             commands::apply_preset,
             commands::turn_off_lightbar,
             commands::get_controller_status,
+            commands::resync_controller,
             commands::get_config,
             commands::save_config,
             commands::get_presets,
@@ -174,6 +176,12 @@ pub fn run() {
             commands::set_adaptive_triggers,
             commands::export_profile_json,
             commands::import_profile_json,
+            commands::test_openrgb_sync,
+            commands::test_wled_sync,
+            commands::get_autostart_enabled,
+            commands::set_autostart_enabled,
+            commands::validate_community_index,
+            commands::validate_and_install_community_profile,
         ])
         .run(tauri::generate_context!())
         .expect("error while running SenseHue");

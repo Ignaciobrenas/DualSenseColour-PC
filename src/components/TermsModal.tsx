@@ -63,26 +63,33 @@ export function TermsModal({
         </div>
 
         <div className="relative flex-1 space-y-2 overflow-y-auto rounded-xl border border-white/[0.09] bg-white/[0.03] p-2.5 text-[11px] leading-relaxed text-slate-200/90 backdrop-blur-md">
-          <p className="font-semibold text-white">SenseHue v2.0.0 — Licencia MIT</p>
+          <p className="font-semibold text-white">SenseHue v3.0.0 — Licencia MIT</p>
           <p>
             <strong>1. Uso bajo licencia libre:</strong> Esta aplicación se ofrece gratuitamente y
             «tal cual» («AS IS») bajo licencia MIT, sin garantías implícitas.
           </p>
           <p>
-            <strong>2. Seguridad de hardware HID:</strong> Envía únicamente reportes estándar de
-            salida USB (<code className="text-sky-300">0x02</code>) y Bluetooth (
+            <strong>2. Seguridad HID & Zero Memory Injection:</strong> Envía únicamente reportes
+            estándar USB (<code className="text-sky-300">0x02</code>) y Bluetooth (
             <code className="text-sky-300">0x31</code> + CRC-32{' '}
-            <code className="text-sky-300">0xA2</code>) a mandos PS5 DualSense / Edge sin modificar
-            firmware ni flash interna.
+            <code className="text-sky-300">0xA2</code>) a DualSense / Edge. Los puentes de juegos y
+            RGB usan solo UDP/HTTP/TCP locales oficiales sin inyectar procesos.
           </p>
           <p>
-            <strong>3. 100 % offline y sin telemetría:</strong> Todos los recursos HTML/JS/CSS están
-            embebidos en el ejecutable. No depende de servidores locales ni externos y guarda tu
-            configuración en local de forma atómica.
+            <strong>3. Privacidad y perfiles validados:</strong> Funciona 100 % offline salvo si
+            refrescas voluntariamente perfiles <code className="text-sky-300">.sensehue</code> en
+            Discover, siempre validados con esquema estricto de datos sin código ejecutable.
           </p>
           <p>
-            <strong>4. Marcas registradas:</strong> DualSense y PlayStation son marcas de Sony
-            Interactive Entertainment Inc. Proyecto independiente sin afiliación oficial.
+            <strong>4. Fotosensibilidad y gatillos:</strong> Los efectos LED dinámicos pueden
+            generar destellos y los gatillos adaptativos aplican fuerza mecánica física. Si notas
+            molestias visuales o fatiga, usa modo estático y gatillos en «Libre».
+          </p>
+          <p>
+            <strong>5. Marcas, gráficos propios y licencias OSS:</strong> DualSense y PlayStation son
+            marcas registradas de Sony Interactive Entertainment Inc. Proyecto independiente con
+            ilustración vectorial 100 % original sin logos de terceros. Usa librerías MIT/Apache-2.0
+            (Tauri, React, hidapi, tokio, serde, Lucide).
           </p>
           <div className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-slate-950/30 px-2.5 py-1.5 text-[10px] text-slate-300 backdrop-blur-sm">
             <span className="flex items-center gap-1.5">

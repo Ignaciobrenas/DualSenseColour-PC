@@ -3,6 +3,7 @@ import {
   Activity,
   BatteryCharging,
   Check,
+  Compass,
   Cpu,
   Download,
   Gamepad2,
@@ -26,6 +27,9 @@ const TRIGGER_OPTIONS: { id: TriggerPreset; label: string }[] = [
   { id: 'rigid', label: 'Rígido' },
   { id: 'weapon_click', label: 'Gatillo FPS' },
   { id: 'pulse', label: 'Pulso' },
+  { id: 'hair_trigger', label: 'Hair-Trig' },
+  { id: 'dual_stage', label: '2-Etapas' },
+  { id: 'progressive_pedal', label: 'Pedal Pro' },
 ];
 
 export function DiagnosticsPanel({
@@ -95,6 +99,12 @@ export function DiagnosticsPanel({
             <p className="font-mono-tabular mt-1 text-[10px] text-slate-300">
               X:{lx.toFixed(2)} · Y:{ly.toFixed(2)} · L2:{l2Pct}%
             </p>
+            <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-violet-400 transition-[width] duration-75"
+                style={{ width: `${l2Pct}%` }}
+              />
+            </div>
           </div>
 
           <div className="rounded-xl border border-white/[0.06] bg-slate-950/25 p-2">
@@ -111,6 +121,12 @@ export function DiagnosticsPanel({
             <p className="font-mono-tabular mt-1 text-[10px] text-slate-300">
               X:{rx.toFixed(2)} · Y:{ry.toFixed(2)} · R2:{r2Pct}%
             </p>
+            <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-cyan-400 transition-[width] duration-75"
+                style={{ width: `${r2Pct}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -120,13 +136,13 @@ export function DiagnosticsPanel({
         <div className="mb-1.5 flex items-center justify-between">
           <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-200">
             <Zap className="h-3.5 w-3.5 text-violet-400" aria-hidden="true" />
-            Probador Gatillos Adaptativos (L2 / R2)
+            Probador Gatillos Adaptativos (7 Modos)
           </span>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <span className="font-mono-tabular w-6 text-[10px] font-semibold text-slate-400">
+          <div className="flex items-start gap-1.5">
+            <span className="font-mono-tabular w-6 pt-1 text-[10px] font-semibold text-slate-400">
               L2
             </span>
             <div className="grid flex-1 grid-cols-4 gap-1">
@@ -137,10 +153,10 @@ export function DiagnosticsPanel({
                   data-testid={`trigger-left-${opt.id}`}
                   aria-pressed={config.left_trigger === opt.id}
                   onClick={() => onTriggersChange(opt.id, config.right_trigger)}
-                  className={`ps-action-tile rounded-lg px-1.5 py-1 text-[10px] font-medium ${
+                  className={`ps-action-tile rounded-lg px-1 py-1 text-[9.5px] font-medium ${
                     config.left_trigger === opt.id
                       ? 'border-violet-400/50 bg-violet-500/20 text-violet-100'
-                      : 'text-slate-400'
+                      : 'text-slate-300'
                   }`}
                 >
                   {opt.label}
@@ -149,8 +165,8 @@ export function DiagnosticsPanel({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <span className="font-mono-tabular w-6 text-[10px] font-semibold text-slate-400">
+          <div className="flex items-start gap-1.5">
+            <span className="font-mono-tabular w-6 pt-1 text-[10px] font-semibold text-slate-400">
               R2
             </span>
             <div className="grid flex-1 grid-cols-4 gap-1">
@@ -161,10 +177,10 @@ export function DiagnosticsPanel({
                   data-testid={`trigger-right-${opt.id}`}
                   aria-pressed={config.right_trigger === opt.id}
                   onClick={() => onTriggersChange(config.left_trigger, opt.id)}
-                  className={`ps-action-tile rounded-lg px-1.5 py-1 text-[10px] font-medium ${
+                  className={`ps-action-tile rounded-lg px-1 py-1 text-[9.5px] font-medium ${
                     config.right_trigger === opt.id
                       ? 'border-cyan-400/50 bg-cyan-500/20 text-cyan-100'
-                      : 'text-slate-400'
+                      : 'text-slate-300'
                   }`}
                 >
                   {opt.label}
@@ -176,16 +192,16 @@ export function DiagnosticsPanel({
       </div>
 
       {/* Pro Automation Toggles */}
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
         <button
           type="button"
           data-testid="toggle-battery-bar"
           aria-pressed={config.battery_bar_leds}
           onClick={() => onPreferencesChange({ battery_bar_leds: !config.battery_bar_leds })}
-          className={`ps-action-tile inline-flex items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[10px] font-medium ${
+          className={`ps-action-tile inline-flex items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-[10px] font-medium ${
             config.battery_bar_leds
               ? 'border-emerald-400/45 text-emerald-200'
-              : 'text-slate-400'
+              : 'text-slate-300'
           }`}
         >
           <BatteryCharging className="h-3 w-3" aria-hidden="true" />
@@ -199,10 +215,10 @@ export function DiagnosticsPanel({
           onClick={() =>
             onPreferencesChange({ sync_all_controllers: !config.sync_all_controllers })
           }
-          className={`ps-action-tile inline-flex items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[10px] font-medium ${
+          className={`ps-action-tile inline-flex items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-[10px] font-medium ${
             config.sync_all_controllers
               ? 'border-sky-400/45 text-sky-100'
-              : 'text-slate-400'
+              : 'text-slate-300'
           }`}
         >
           <Gamepad2 className="h-3 w-3" aria-hidden="true" />
@@ -214,14 +230,31 @@ export function DiagnosticsPanel({
           data-testid="toggle-local-api"
           aria-pressed={config.local_api_enabled}
           onClick={() => onPreferencesChange({ local_api_enabled: !config.local_api_enabled })}
-          className={`ps-action-tile inline-flex items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[10px] font-medium ${
+          className={`ps-action-tile inline-flex items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-[10px] font-medium ${
             config.local_api_enabled
               ? 'border-cyan-400/45 text-cyan-100'
-              : 'text-slate-400'
+              : 'text-slate-300'
           }`}
         >
           <Server className="h-3 w-3" aria-hidden="true" />
           API :17420
+        </button>
+
+        <button
+          type="button"
+          data-testid="toggle-gyro-indicator"
+          aria-pressed={config.gyro_indicator_enabled}
+          onClick={() =>
+            onPreferencesChange({ gyro_indicator_enabled: !config.gyro_indicator_enabled })
+          }
+          className={`ps-action-tile inline-flex items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-[10px] font-medium ${
+            config.gyro_indicator_enabled
+              ? 'border-emerald-400/50 text-emerald-200'
+              : 'text-slate-300'
+          }`}
+        >
+          <Compass className="h-3 w-3" aria-hidden="true" />
+          Gyro-Aim Verde
         </button>
       </div>
 

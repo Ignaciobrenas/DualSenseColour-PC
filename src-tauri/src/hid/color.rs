@@ -52,8 +52,8 @@ pub struct ColorPreset {
 /// Curated presets available across UI pills and the native system tray.
 pub const PRESETS: &[ColorPreset] = &[
     ColorPreset {
-        id: "playstation-blue",
-        name: "PlayStation Blue",
+        id: "classic-blue",
+        name: "Classic Blue",
         color: RgbColor::new(0, 67, 156),
         hex: "#00439C",
     },
@@ -95,9 +95,12 @@ pub const PRESETS: &[ColorPreset] = &[
     },
 ];
 
-/// Looks up a built-in preset by identifier.
+/// Looks up a built-in preset by identifier (retains legacy aliases like `playstation-blue`).
 #[must_use]
 pub fn find_preset(id: &str) -> Option<&'static ColorPreset> {
+    if id.eq_ignore_ascii_case("playstation-blue") || id.eq_ignore_ascii_case("ps5-blue") {
+        return PRESETS.first();
+    }
     PRESETS.iter().find(|preset| preset.id == id)
 }
 
@@ -266,8 +269,9 @@ mod tests {
     #[test]
     fn builtin_presets_match_specification() {
         assert_eq!(PRESETS.len(), 7);
-        let ps = find_preset("playstation-blue").expect("preset exists");
-        assert_eq!(ps.hex, "#00439C");
+        let classic = find_preset("classic-blue").expect("preset exists");
+        assert_eq!(classic.hex, "#00439C");
+        assert_eq!(find_preset("playstation-blue"), Some(classic));
         let off = find_preset("off").expect("off preset exists");
         assert_eq!(off.color, RgbColor::new(0, 0, 0));
     }

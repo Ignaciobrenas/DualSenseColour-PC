@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/Ignaciobrenas/SenseHue/releases">
-    <img src="https://img.shields.io/badge/release-v2.0.0-00E5FF?style=for-the-badge" alt="Release v2.0.0" />
+    <img src="https://img.shields.io/badge/release-v3.0.0-00E5FF?style=for-the-badge" alt="Release v3.0.0" />
   </a>
   <img src="https://img.shields.io/badge/built%20with-Rust%20%2B%20Tauri%20v2-3B82F6?style=for-the-badge" alt="Rust and Tauri v2" />
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20SteamOS-1e293b?style=for-the-badge" alt="Platforms" />
@@ -13,24 +13,16 @@
   </a>
 </p>
 
-> **DualSense Lighting & Telemetry** — A lightweight, ultra-fast desktop & SteamOS suite written in **Rust + Tauri v2 + React** to control RGB lighting, live battery telemetry, adaptive triggers, dynamic lighting effects, in-game hardware combos, and CLI automation for **Sony PlayStation 5 DualSense** (`0x054C:0x0CE6`) and **DualSense Edge** (`0x054C:0x0DF2`) over **USB-C** and **Bluetooth**.
-
----
-
-## Preview
-
-<p align="center">
-  <img src="docs/screenshots/app-preview.png" alt="SenseHue UI Preview" width="440" />
-</p>
+> **DualSense Lighting & Telemetry** — A lightweight, ultra-fast desktop & SteamOS suite written in **Rust + Tauri v2 + React** to control RGB lighting, live battery telemetry (with 20%/10%/5% low-battery alerts), adaptive triggers, dynamic lighting effects, Zero-Memory-Injection game telemetry, OpenRGB/WLED sync-out, and CLI automation for compatible **DualSense** (`0x054C:0x0CE6`) and **DualSense Edge** (`0x054C:0x0DF2`) controllers over **USB-C** and **Bluetooth**.
 
 ---
 
 ## Key Features
 
-- **Real-time Visual DualSense Preview**: High-resolution controller render with pixel-aligned optical touchpad lightbar glow, ambient halo, 5 Player LEDs, and Mic Mute LED indicator.
-- **Responsive Color Picker & Curated Presets**: Interactive 2D Saturation/Value surface, full-spectrum Hue slider, HEX/RGB live inputs, brightness scaling, and quick presets (*PlayStation Blue, Crimson, Cyan, Emerald, Amber, Violet, Off*).
+- **100% Original Vector Controller Preview**: Bespoke hardware-free SVG controller illustration with pixel-aligned optical touchpad lightbar glow, ambient halo, 5 Player LEDs, and Mic Mute LED indicator (zero third-party photos or logos).
+- **Responsive Color Picker & Curated Presets**: Interactive 2D Saturation/Value surface, full-spectrum Hue slider, HEX/RGB live inputs, brightness scaling, and quick presets (*Classic Blue, Crimson Red, Cyber Cyan, Emerald, Gold, Violet, Off*).
 - **Native USB & Bluetooth HID Protocol (With BT `0x31` Unlock)**: Sends hardware output reports directly (`0x02` over USB, `0x31` + `valid_flag2=0x02` / `lightbar_setup=0x02` unlock flags & IEEE CRC-32 seed `0xA2` over Bluetooth) at smooth ~45 Hz IPC throttling without blocking the UI.
-- **Battery Telemetry & Gamer Effects Suite (v2.0)**: Input report telemetry parser (`0%–100%`, charging status, stick drift & circularity), Adaptive Trigger presets, async `EffectEngine` (*Breathing, Prism Flow, Battery Smart, Input Reactive, Audio Beat, Screen Ambilight*), `GameWatcher` profile matcher, and debounced hardware combos (`Mute + D-Pad`).
+- **Battery Telemetry, Low-Battery Alerts & Pro Triggers (v3.0)**: Real-time battery readout (`0%–100%`), native desktop notifications & UI warnings at 20%, 10%, and 5%, 7 Adaptive Trigger presets (*Libre, Rígido, Gatillo FPS, Pulso, Hair-Trigger, Dual-Stage, Pedal Pro*), Gyro-Aim visual tint, Game Telemetry (*F1/Forza UDP, Valve GSI, LoL Live API*), OpenRGB/WLED sync-out, and Discover `.sensehue` profiles.
 - **`sensehue-cli` Companion Tool**: Scriptable command-line control (`--preset`, `--color`, `--brightness`, `--mode`, `--off`, `--status`) for Steam launch options and hotkeys.
 - **Steam Keep-Alive Fix & System Tray**: Periodic LED state refresh option and rich native Windows/Linux System Tray controls (`Hide to Tray`).
 - **Frameless Obsidian Glassmorphism Window**: Native Windows Acrylic/Mica backdrop integration with bespoke translucent glass controls.
@@ -111,6 +103,6 @@ cargo build --release
 
 ---
 
-## License
+## License & Legal Notices
 
-Distributed under the **MIT License**. See [LICENSE](LICENSE) for full details.
+Distributed under the **MIT License**. See [LICENSE](LICENSE) and [TERMS_AND_CONDITIONS.txt](TERMS_AND_CONDITIONS.txt) for full details, photosensitivity & adaptive trigger warnings, open-source attributions, and trademark disclaimers ("DualSense", "PS5", and "PlayStation" are registered trademarks of Sony Interactive Entertainment Inc.; SenseHue is independent, uses zero Sony logos or official photography, and communicates purely via standard OS HID interoperability).

@@ -1,3 +1,4 @@
+pub mod battery_alerts;
 pub mod color;
 pub mod input_report;
 pub mod monitor;

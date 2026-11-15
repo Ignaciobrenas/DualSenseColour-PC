@@ -1,11 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import App from '../App';
 import { ConnectionBadge } from '../components/ConnectionBadge';
 import { formatFriendlyError } from '../types/controller';
 
 describe('App integration', () => {
-  it('syncs preset clicks, custom HEX edits, and LED power-off with DualSensePreview', () => {
+  it('syncs preset clicks, custom HEX edits, and LED power-off with DualSensePreview', async () => {
     render(<App />);
 
     expect(screen.getByText('SenseHue')).toBeInTheDocument();
@@ -47,6 +47,33 @@ describe('App integration', () => {
     const batteryBarBtn = screen.getByTestId('toggle-battery-bar');
     fireEvent.click(batteryBarBtn);
     expect(batteryBarBtn).toHaveAttribute('aria-pressed', 'true');
+
+    // New v3.0 competitive triggers & Gyro-Aim indicator work interactively
+    const hairTriggerLeftBtn = screen.getByTestId('trigger-left-hair_trigger');
+    fireEvent.click(hairTriggerLeftBtn);
+    expect(hairTriggerLeftBtn).toHaveAttribute('aria-pressed', 'true');
+
+    const gyroBtn = screen.getByTestId('toggle-gyro-indicator');
+    fireEvent.click(gyroBtn);
+    expect(gyroBtn).toHaveAttribute('aria-pressed', 'true');
+
+    // Ecosistema tab exposes Zero-Injection Telemetry, OpenRGB, WLED & low-battery alerts switch
+    fireEvent.click(screen.getByTestId('tab-ecosystem'));
+    expect(screen.getByTestId('ecosystem-panel')).toBeInTheDocument();
+    const gamesToggle = screen.getByTestId('toggle-game-integrations');
+    fireEvent.click(gamesToggle);
+    expect(gamesToggle).toHaveAttribute('aria-pressed', 'true');
+    const alertsToggle = screen.getByTestId('toggle-low-battery-alerts');
+    expect(alertsToggle).toHaveAttribute('aria-pressed', 'true');
+
+    // Discover tab filters and applies curated community .sensehue profile onto preview
+    fireEvent.click(screen.getByTestId('tab-discover'));
+    expect(screen.getByTestId('discover-panel')).toBeInTheDocument();
+    const applyF1Btn = screen.getByTestId('discover-apply-simracing-f1');
+    fireEvent.click(applyF1Btn);
+    await waitFor(() => {
+      expect(preview.getAttribute('data-color')).toBe('#FF1744');
+    });
   });
 
   it('renders battery readout in ConnectionBadge for Bluetooth and pending states', () => {
@@ -81,6 +108,53 @@ describe('App integration', () => {
       />
     );
     expect(screen.getByTestId('battery-badge')).toHaveTextContent('...');
+  });
+
+  it('renders low-battery badge thresholds at 20%, 10% and 5%', () => {
+    const { rerender } = render(
+      <ConnectionBadge
+        status={{
+          connected: true,
+          transport: 'bluetooth',
+          model: 'DualSense',
+          serial_number: null,
+          product_name: 'DualSense Wireless Controller',
+          battery_percent: 20,
+          charging_state: 'discharging',
+        }}
+      />
+    );
+    expect(screen.getByTestId('battery-badge')).toHaveTextContent('20%');
+
+    rerender(
+      <ConnectionBadge
+        status={{
+          connected: true,
+          transport: 'bluetooth',
+          model: 'DualSense',
+          serial_number: null,
+          product_name: 'DualSense Wireless Controller',
+          battery_percent: 10,
+          charging_state: 'discharging',
+        }}
+      />
+    );
+    expect(screen.getByTestId('battery-badge')).toHaveTextContent('10%');
+
+    rerender(
+      <ConnectionBadge
+        status={{
+          connected: true,
+          transport: 'bluetooth',
+          model: 'DualSense',
+          serial_number: null,
+          product_name: 'DualSense Wireless Controller',
+          battery_percent: 5,
+          charging_state: 'discharging',
+        }}
+      />
+    );
+    expect(screen.getByTestId('battery-badge')).toHaveTextContent('5%');
   });
 
   it('translates raw Windows HID errors into friendly actionable Spanish guidance', () => {

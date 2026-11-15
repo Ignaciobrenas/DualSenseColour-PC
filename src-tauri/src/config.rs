@@ -11,7 +11,7 @@ use crate::effects::LightingEffectMode;
 use crate::error::{AppError, AppResult};
 use crate::hid::color::{MicLedState, RgbColor};
 use crate::hid::protocol::DualSenseOutputState;
-use crate::hid::triggers::{battery_to_player_led_count, TriggerPreset};
+use crate::hid::triggers::{battery_to_player_led_count, gyro_indicator_color, TriggerPreset};
 
 const CONFIG_FILE_NAME: &str = "config.json";
 
@@ -35,6 +35,20 @@ pub struct AppConfig {
     pub local_api_enabled: bool,
     /// Activa los listeners de juegos (F1/Forza UDP y Valve GSI en loopback).
     pub game_integrations_enabled: bool,
+    /// Notificaciones del sistema al cruzar 20%, 10% y 5% de batería descargándose.
+    pub low_battery_alerts: bool,
+    /// Replica el color activo hacia un servidor local OpenRGB SDK (`:6742`).
+    pub openrgb_enabled: bool,
+    pub openrgb_addr: String,
+    /// Replica el color activo por UDP DRGB hacia una tira LED WLED (`:21324`).
+    pub wled_enabled: bool,
+    pub wled_addr: String,
+    /// Activa el tintado visual de confirmación Gyro-Aim en la barra de luz.
+    pub gyro_indicator_enabled: bool,
+    /// Sincroniza el mute de micrófono del sistema (PipeWire / estado local).
+    pub mic_mute_sync_enabled: bool,
+    /// Evita el secuestro automático de dispositivo de audio USB en Windows/Linux.
+    pub usb_audio_guard_enabled: bool,
     pub game_profiles: Vec<GameProfileRule>,
 }
 
@@ -69,7 +83,7 @@ impl Default for AppConfig {
         Self {
             color: RgbColor::default(),
             brightness: 100,
-            preset_id: Some("playstation-blue".to_string()),
+            preset_id: Some("classic-blue".to_string()),
             player_leds: 1,
             mic_led: MicLedState::Off,
             apply_on_connect: true,
@@ -82,6 +96,14 @@ impl Default for AppConfig {
             right_trigger: TriggerPreset::Off,
             local_api_enabled: false,
             game_integrations_enabled: false,
+            low_battery_alerts: true,
+            openrgb_enabled: false,
+            openrgb_addr: "127.0.0.1:6742".to_string(),
+            wled_enabled: false,
+            wled_addr: "192.168.1.50:21324".to_string(),
+            gyro_indicator_enabled: false,
+            mic_mute_sync_enabled: false,
+            usb_audio_guard_enabled: false,
             game_profiles: default_game_profiles(),
         }
     }
@@ -93,6 +115,12 @@ impl AppConfig {
     pub fn sanitized(mut self) -> Self {
         self.brightness = self.brightness.min(100);
         self.player_leds = self.player_leds.min(5);
+        if self.openrgb_addr.trim().is_empty() {
+            self.openrgb_addr = "127.0.0.1:6742".to_string();
+        }
+        if self.wled_addr.trim().is_empty() {
+            self.wled_addr = "192.168.1.50:21324".to_string();
+        }
         self
     }
 
@@ -112,9 +140,10 @@ impl AppConfig {
             (true, Some(pct)) => battery_to_player_led_count(pct),
             _ => self.player_leds.min(5),
         };
+        let color = gyro_indicator_color(self.color, self.gyro_indicator_enabled);
 
         DualSenseOutputState {
-            color: self.color,
+            color,
             brightness: self.brightness.min(100),
             player_leds,
             mic_led: self.mic_led,
@@ -239,7 +268,7 @@ mod tests {
         let path = dir.path().join("missing/config.json");
         let cfg = AppConfig::load_from_path(&path).expect("missing file falls back");
         assert_eq!(cfg, AppConfig::default());
-        assert_eq!(cfg.preset_id.as_deref(), Some("playstation-blue"));
+        assert_eq!(cfg.preset_id.as_deref(), Some("classic-blue"));
         assert_eq!(cfg.brightness, 100);
         assert_eq!(cfg.player_leds, 1);
         assert!(cfg.apply_on_connect);
